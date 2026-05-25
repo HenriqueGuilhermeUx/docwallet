@@ -1,0 +1,39 @@
+{
+  "name": "DocWallet - Carteira Digital",
+  "short_name": "DocWallet",
+  "description": "Sua carteira digital de documentos. RG, CNH, CPF, carteiras profissionais e mais.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#6366F1",
+  "theme_color": "#6366F1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/wallet-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/wallet-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/wallet-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "pt-BR",
+  "shortcuts": [
+    {
+      "name": "Adicionar Documento",
+      "short_name": "Adicionar",
+      "description": "Adicionar novo documento",
+      "url": "/?action=add",
+      "icons": [{ "src": "/wallet-icon.svg", "sizes": "any" }]
+    }
+  ]
+}
