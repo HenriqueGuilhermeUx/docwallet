@@ -16,7 +16,8 @@ import { DocumentViewerModal } from './components/DocumentViewerModal';
 import { AuthModal } from './components/AuthModal';
 import { BannerBlockchain } from './components/BannerBlockchain';
 import { BlockchainPage } from './components/BlockchainPage';
-import { LogOut, UserCircle, Shield, FileSignature } from 'lucide-react';
+import { LogOut, UserCircle, Shield, FileSignature, FileKey } from 'lucide-react';
+import { DIDWallet } from './components/DIDWallet';
 
 function App() {
   const {
@@ -40,6 +41,7 @@ function App() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showBlockchainModal, setShowBlockchainModal] = useState(false);
+  const [showDIDWallet, setShowDIDWallet] = useState(false);
   // Simulated credits - in production this would come from backend
   const [userCredits, setUserCredits] = useState(5);
 
@@ -150,6 +152,13 @@ function App() {
                     <FileSignature size={18} />
                     Criar Contrato
                   </button>
+                  <button
+                    onClick={() => setShowDIDWallet(true)}
+                    className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
+                  >
+                    <FileKey size={18} />
+                    Identidade
+                  </button>
                 </div>
               </div>
             </div>
@@ -202,6 +211,11 @@ function App() {
         onClose={() => setShowBlockchainModal(false)}
         userCredits={userCredits}
         onCreditsChange={setUserCredits}
+      />
+
+      <DIDWallet
+        isOpen={showDIDWallet}
+        onClose={() => setShowDIDWallet(false)}
       />
 
       {toast && <Toast message={toast.message} type={toast.type} />}
