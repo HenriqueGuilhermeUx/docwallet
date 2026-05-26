@@ -52,13 +52,14 @@ import {
   formatProofDisplay,
   ZK_PROOF_TYPES
 } from '../lib/zkp';
+import { didit, DiditVerificationResult, DiditCredential } from '../lib/didit';
 
 interface DIDWalletProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type TabType = 'identities' | 'credentials' | 'proofs' | 'create';
+type TabType = 'identities' | 'credentials' | 'proofs' | 'kyc' | 'create';
 
 export function DIDWallet({ isOpen, onClose }: DIDWalletProps) {
   const [activeTab, setActiveTab] = useState<TabType>('identities');
