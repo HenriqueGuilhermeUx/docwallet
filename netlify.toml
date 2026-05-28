@@ -1,11 +1,14 @@
 [build]
-  command = "rm -rf node_modules package-lock.json && npm install && npm run build"
+  command = "rm -rf node_modules package-lock.json .npm && npm cache clean --force && npm install"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "18"
-  COREPACK_ENABLE_DOWNLOAD_PROMPT = "false"
-  COREPACK_ENABLE_AUTO_PIN = "0"
+  NPM_CONFIG_LEGACY_PEER_DEPS = "true"
+  NPM_CONFIG_USE_CACHE = "false"
+
+[build.processing]
+  skip_processing = false
 
 [[redirects]]
   from = "/*"
