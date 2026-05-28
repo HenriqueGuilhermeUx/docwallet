@@ -3,7 +3,14 @@
  * Implements W3C DID Core standard for self-sovereign identity
  */
 
-import { createHash, randomBytes } from 'crypto';
+// Browser-compatible crypto using crypto-browserify
+import { createHash } from '../utils/crypto';
+
+function getRandomBytes(size: number): Uint8Array {
+  const array = new Uint8Array(size);
+  crypto.getRandomValues(array);
+  return array;
+}
 
 // DID Methods supported
 export type DIDMethod = 'key' | 'ethr';
@@ -62,8 +69,8 @@ export async function generateKeyPair(): Promise<{
   privateKey: string;
   address: string;
 }> {
-  const privateKeyBytes = randomBytes(32);
-  const privateKeyHex = privateKeyBytes.toString('hex');
+  const privateKeyBytes = getRandomBytes(32);
+  const privateKeyHex = Array.from(privateKeyBytes).map(b => b.toString(16).padStart(2, '0')).join('');
 
   // Generate address from private key (simplified eth style)
   const publicKeyHash = createHash('sha256').update(privateKeyBytes).digest('hex');
@@ -96,9 +103,9 @@ export function createDIDEthr(address: string, network: string = 'mainnet'): str
 // Simple base58 encoding
 function base58Encode(hexString: string): string {
   const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  const bytes = Buffer.from(hexString, 'hex');
+  const bytes = new Uint8Array(hexString.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
   let result = '';
-  let num = BigInt('0x' + bytes.toString('hex'));
+  let num = BigInt('0x' + hexString);
 
   const base = BigInt(58);
   while (num > BigInt(0)) {
@@ -200,12 +207,16 @@ export async function signWithDID(
   data: string,
   privateKeyHex: string
 ): Promise<string> {
-  const dataBytes = Buffer.from(data, 'utf8');
-  const keyBytes = Buffer.from(privateKeyHex, 'hex');
+  const enc = new TextEncoder();
+  const dataBytes = enc.encode(data);
+  const keyBytes = new Uint8Array(privateKeyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
 
-  const signature = createHash('sha256')
-    .update(Buffer.concat([keyBytes, dataBytes]))
-    .digest('hex');
+  // Concatenate key + data
+  const combined = new Uint8Array(keyBytes.length + dataBytes.length);
+  combined.set(keyBytes);
+  combined.set(dataBytes, keyBytes.length);
+
+  const signature = createHash('sha256').update(combined).digest('hex');
 
   return signature;
 }
@@ -216,12 +227,16 @@ export async function verifyDIDSignature(
   signature: string,
   publicKeyHex: string
 ): Promise<boolean> {
-  const dataBytes = Buffer.from(data, 'utf8');
-  const sigBytes = Buffer.from(signature, 'hex');
+  const enc = new TextEncoder();
+  const dataBytes = enc.encode(data);
+  const pubKeyBytes = new Uint8Array(publicKeyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
 
-  const expected = createHash('sha256')
-    .update(Buffer.concat([Buffer.from(publicKeyHex, 'hex'), dataBytes]))
-    .digest('hex');
+  // Concatenate pubKey + data
+  const combined = new Uint8Array(pubKeyBytes.length + dataBytes.length);
+  combined.set(pubKeyBytes);
+  combined.set(dataBytes, pubKeyBytes.length);
+
+  const expected = createHash('sha256').update(combined).digest('hex');
 
   return signature === expected;
 }
@@ -267,5 +282,3 @@ export function importDIDBackup(backupJson: string): boolean {
     return false;
   }
 }
-
-export { createHash, randomBytes };

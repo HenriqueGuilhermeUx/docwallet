@@ -1,5 +1,5 @@
 [build]
-  command = "rm -rf node_modules package-lock.json .npm ~/.npm ~/.pnpm-store && npm cache clean --force && npm install --legacy-peer-deps && npm run build"
+  command = "rm -rf node_modules pnpm-lock.yaml && pnpm install && pnpm run build"
   publish = "dist"
 
 [build.environment]

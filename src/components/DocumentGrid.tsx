@@ -5,12 +5,16 @@ import { FileText, Loader2 } from 'lucide-react';
 interface DocumentGridProps {
   documents: Document[];
   onDocumentClick: (document: Document) => void;
+  onShareDocument?: (document: Document) => void;
+  onAuthenticateDocument?: (document: Document) => void;
   isLoading?: boolean;
 }
 
 export const DocumentGrid: React.FC<DocumentGridProps> = ({
   documents,
   onDocumentClick,
+  onShareDocument,
+  onAuthenticateDocument,
   isLoading = false
 }) => {
   if (isLoading) {
@@ -46,6 +50,8 @@ export const DocumentGrid: React.FC<DocumentGridProps> = ({
             key={doc.id}
             document={doc}
             onClick={() => onDocumentClick(doc)}
+            onShare={onShareDocument}
+            onAuthenticate={onAuthenticateDocument}
           />
         ))}
       </div>

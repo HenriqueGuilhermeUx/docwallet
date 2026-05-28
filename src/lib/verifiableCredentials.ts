@@ -3,8 +3,8 @@
  * Implements W3C VC Data Model v1.1
  */
 
-import { createHash } from 'crypto';
-import { DIDDocument, signWithDID, verifyDIDSignature } from './did';
+import { createHash } from '../utils/crypto';
+import { signWithDID, verifyDIDSignature } from './did';
 
 // Credential types
 export type CredentialStatus = 'valid' | 'revoked' | 'expired' | 'suspended';

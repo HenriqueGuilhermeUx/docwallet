@@ -18,6 +18,7 @@ import { BannerBlockchain } from './components/BannerBlockchain';
 import { BlockchainPage } from './components/BlockchainPage';
 import { LogOut, UserCircle, Shield, FileSignature, FileKey } from 'lucide-react';
 import { DIDWallet } from './components/DIDWallet';
+import { ShareModal } from './components/ShareModal';
 
 function App() {
   const {
@@ -42,6 +43,7 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showBlockchainModal, setShowBlockchainModal] = useState(false);
   const [showDIDWallet, setShowDIDWallet] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   // Simulated credits - in production this would come from backend
   const [userCredits, setUserCredits] = useState(5);
 
@@ -63,6 +65,16 @@ function App() {
 
   const handleDocumentClick = (doc: Document) => {
     setSelectedDocument(doc);
+  };
+
+  const handleShareDocument = (doc: Document) => {
+    setSelectedDocument(doc);
+    setShowShareModal(true);
+  };
+
+  const handleAuthenticateDocument = (doc: Document) => {
+    setSelectedDocument(doc);
+    setShowBlockchainModal(true);
   };
 
   const handleHeaderAction = () => {
@@ -175,6 +187,8 @@ function App() {
           <DocumentGrid
             documents={documents}
             onDocumentClick={handleDocumentClick}
+            onShareDocument={handleShareDocument}
+            onAuthenticateDocument={handleAuthenticateDocument}
             isLoading={isLoading}
           />
 
@@ -217,6 +231,13 @@ function App() {
         isOpen={showDIDWallet}
         onClose={() => setShowDIDWallet(false)}
       />
+
+      {showShareModal && selectedDocument && (
+        <ShareModal
+          document={selectedDocument}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
 
       {toast && <Toast message={toast.message} type={toast.type} />}
     </div>

@@ -4,7 +4,18 @@
  * In production, use circom + snarkjs for real ZK proofs
  */
 
-import { createHash, randomBytes } from 'crypto';
+// Browser-compatible crypto using crypto-browserify
+import { createHash } from '../utils/crypto';
+
+function getRandomBytes(size: number): Uint8Array {
+  const array = new Uint8Array(size);
+  crypto.getRandomValues(array);
+  return array;
+}
+
+function randomBytesHex(size: number): string {
+  return Array.from(getRandomBytes(size)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 // ZK Proof types
 export type ZKProofType =
@@ -112,7 +123,7 @@ export async function generateAgeProof(
 
   // Commitment to birth date
   const secret = createHash('sha256').update(birthDate).digest('hex');
-  const nullifier = createHash('sha256').update(secret + randomBytes(16).toString('hex')).digest('hex');
+  const nullifier = createHash('sha256').update(secret + randomBytesHex(16)).digest('hex');
 
   // Challenge based on signal and nullifier
   const challenge = createHash('sha256')
@@ -148,7 +159,7 @@ export async function generateBlacklistProof(
   userMerkleProof: { leaf: string; path: string[]; pathIndices: number[] }
 ): Promise<ZKProof> {
   const secret = createHash('sha256').update(userId).digest('hex');
-  const nullifier = createHash('sha256').update(secret + randomBytes(16).toString('hex')).digest('hex');
+  const nullifier = createHash('sha256').update(secret + randomBytesHex(16)).digest('hex');
 
   // Verify user is NOT in the blacklist
   // In production: use semaphore/gnark for actual ZK proof
@@ -180,7 +191,7 @@ export async function generateCitizenshipProof(
   signal: string = ''
 ): Promise<ZKProof> {
   const secret = createHash('sha256').update(countryCode).digest('hex');
-  const nullifier = createHash('sha256').update(secret + randomBytes(16).toString('hex')).digest('hex');
+  const nullifier = createHash('sha256').update(secret + randomBytesHex(16)).digest('hex');
 
   const challenge = createHash('sha256')
     .update(signal + nullifier + countryCode)
@@ -212,7 +223,7 @@ export async function generateProof(
   signal: string = ''
 ): Promise<ZKProof> {
   const secret = createHash('sha256').update(value + claim).digest('hex');
-  const nullifier = createHash('sha256').update(secret + randomBytes(16).toString('hex')).digest('hex');
+  const nullifier = createHash('sha256').update(secret + randomBytesHex(16)).digest('hex');
 
   const challenge = createHash('sha256')
     .update(signal + nullifier + type + claim)
