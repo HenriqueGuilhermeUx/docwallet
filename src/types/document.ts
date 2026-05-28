@@ -25,6 +25,7 @@ export interface Document {
   fileType: 'image/jpeg' | 'image/png' | 'application/pdf';
   createdAt: string;
   thumbnail?: string;
+  filePath?: string; // caminho no storage para deleção correta
 }
 
 export interface DocumentTypeInfo {

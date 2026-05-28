@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { X, Copy, Mail, MessageCircle, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Copy, Mail, MessageCircle, Check, Loader2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Document } from '../types/document';
-import { getShareUrl, getWhatsAppShareUrl, getEmailSubject, getEmailBody } from '../utils/helpers';
+import { getWhatsAppShareUrl, getEmailSubject, getEmailBody } from '../utils/helpers';
+import { generateShareLink } from '../lib/documents';
 
 interface ShareModalProps {
   document: Document;
@@ -11,8 +12,26 @@ interface ShareModalProps {
 
 export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => {
   const [copied, setCopied] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const shareUrl = getShareUrl(document.id);
+  // CORREÇÃO: Gerar link temporário seguro ao abrir o modal
+  useEffect(() => {
+    const createSecureLink = async () => {
+      try {
+        // Gerar link temporário com expiração de 7 dias
+        const secureLink = await generateShareLink(document.id);
+        setShareUrl(secureLink);
+      } catch (error) {
+        console.error('Erro ao criar link seguro:', error);
+        // Fallback: link direto com ID do documento (menos seguro)
+        setShareUrl(`${window.location.origin}/share/${document.id}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    createSecureLink();
+  }, [document.id]);
 
   const handleCopyLink = async () => {
     try {
@@ -46,37 +65,60 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
 
         <div className="p-6 space-y-6">
           <div className="flex flex-col items-center">
-            <div className="bg-white p-4 rounded-xl shadow-card">
-              <QRCodeSVG
-                value={shareUrl}
-                size={180}
-                level="M"
-                includeMargin={true}
-              />
-            </div>
+            {isLoading ? (
+              <div className="bg-slate-50 p-8 rounded-xl flex flex-col items-center">
+                <Loader2 className="text-primary animate-spin mb-2" size={32} />
+                <p className="text-slate-500 text-sm">Gerando link seguro...</p>
+              </div>
+            ) : (
+              <div className="bg-white p-4 rounded-xl shadow-card">
+                <QRCodeSVG
+                  value={shareUrl}
+                  size={180}
+                  level="M"
+                  includeMargin={true}
+                />
+              </div>
+            )}
             <p className="text-slate-500 text-sm mt-4 text-center">
-              Escaneie para acessar o documento<br />
-              <span className="font-mono text-xs text-slate-400">{document.name}</span>
+              {isLoading ? (
+                'Aguarde...'
+              ) : (
+                <>
+                  Link temporário válido por 7 dias<br />
+                  <span className="font-mono text-xs text-slate-400">{document.name}</span>
+                </>
+              )}
             </p>
           </div>
 
           <div className="flex flex-col gap-3">
             <button
               onClick={handleCopyLink}
-              className="flex items-center gap-3 w-full p-4 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors"
+              disabled={isLoading}
+              className={`flex items-center gap-3 w-full p-4 rounded-xl transition-colors ${
+                isLoading
+                  ? 'bg-slate-50 cursor-not-allowed opacity-50'
+                  : 'bg-slate-50 hover:bg-slate-100'
+              }`}
             >
               <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
                 {copied ? <Check className="text-secondary" size={20} /> : <Copy className="text-slate-600" size={20} />}
               </div>
               <div className="text-left">
                 <p className="font-medium text-slate-800">{copied ? 'Copiado!' : 'Copiar link'}</p>
-                <p className="text-sm text-slate-500">{copied ? 'Link na área de transferência' : shareUrl}</p>
+                <p className="text-sm text-slate-500 truncate">{copied ? 'Link na área de transferência' : shareUrl || 'Gerando...'}</p>
               </div>
             </button>
 
             <button
               onClick={handleWhatsApp}
-              className="flex items-center gap-3 w-full p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors"
+              disabled={isLoading}
+              className={`flex items-center gap-3 w-full p-4 rounded-xl transition-colors ${
+                isLoading
+                  ? 'bg-green-50 cursor-not-allowed opacity-50'
+                  : 'bg-green-50 hover:bg-green-100'
+              }`}
             >
               <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
                 <MessageCircle className="text-white" size={20} />
@@ -89,7 +131,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
 
             <button
               onClick={handleEmail}
-              className="flex items-center gap-3 w-full p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+              disabled={isLoading}
+              className={`flex items-center gap-3 w-full p-4 rounded-xl transition-colors ${
+                isLoading
+                  ? 'bg-blue-50 cursor-not-allowed opacity-50'
+                  : 'bg-blue-50 hover:bg-blue-100'
+              }`}
             >
               <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
                 <Mail className="text-white" size={20} />

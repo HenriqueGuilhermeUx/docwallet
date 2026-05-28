@@ -101,7 +101,8 @@ export const useDocumentsWithAuth = () => {
   const deleteDocument = useCallback(async (doc: Document) => {
     if (!user) return;
     try {
-      const filePath = `${user.id}/${doc.id}`;
+      // CORREÇÃO: Usar filePath salvo no banco em vez de construir caminho incorreto
+      const filePath = doc.filePath || `${user.id}/${doc.id}`;
       await deleteDocFromSupabase(doc.id, filePath);
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
       showToast('Documento excluído', 'info');

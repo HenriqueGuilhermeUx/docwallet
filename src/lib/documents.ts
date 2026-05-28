@@ -70,6 +70,7 @@ export const fetchDocuments = async (userId: string): Promise<Document[]> => {
     fileData: doc.file_url,
     fileType: doc.file_type,
     createdAt: doc.created_at,
+    filePath: doc.file_path, // incluir para deleção correta
   }));
 };
 

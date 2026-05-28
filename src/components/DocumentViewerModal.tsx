@@ -7,7 +7,7 @@ import { ShareModal } from './ShareModal';
 interface DocumentViewerModalProps {
   document: Document;
   onClose: () => void;
-  onDelete: (id: string) => void;
+  onDelete: (document: Document) => void; // CORRIGIDO: Accept Document, not string
 }
 
 export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ document, onClose, onDelete }) => {
@@ -27,7 +27,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
   };
 
   const handleDelete = () => {
-    onDelete(document.id);
+    onDelete(document); // CORRIGIDO: Pass full document object
     onClose();
   };
 
