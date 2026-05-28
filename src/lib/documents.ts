@@ -90,10 +90,15 @@ export const deleteDocument = async (docId: string, filePath: string): Promise<v
 };
 
 export const generateShareLink = async (docId: string): Promise<string> => {
+  // Obter usuário logado para incluir created_by
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Usuário não autenticado');
+
   const { data, error } = await supabase
     .from('shared_documents')
     .insert({
       document_id: docId,
+      created_by: user.id, // Campo obrigatório no novo schema
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     })
     .select()
@@ -105,20 +110,29 @@ export const generateShareLink = async (docId: string): Promise<string> => {
 };
 
 export const getSharedDocument = async (shareId: string) => {
+  // Usar função segura que valida expiração e revogação
   const { data, error } = await supabase
-    .from('shared_documents')
-    .select(`
-      *,
-      documents (*)
-    `)
-    .eq('id', shareId)
-    .single();
+    .rpc('get_shared_document_safe', { p_share_id: shareId });
 
-  if (error) throw error;
+  if (error) {
+    // Se a função não existir, fallback para lógica original
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('shared_documents')
+      .select(`
+        *,
+        documents (*)
+      `)
+      .eq('id', shareId)
+      .single();
 
-  if (new Date(data.expires_at) < new Date()) {
-    throw new Error('Link expirado');
+    if (fallbackError) throw fallbackError;
+
+    if (new Date(fallbackData.expires_at) < new Date() || fallbackData.is_revoked) {
+      throw new Error('Link inválido, expirado ou revogado');
+    }
+
+    return fallbackData.documents;
   }
 
-  return data.documents;
+  return data;
 };
