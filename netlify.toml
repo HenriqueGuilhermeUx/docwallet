@@ -1,11 +1,14 @@
 [build]
-  command = "rm -rf node_modules package-lock.json .npm && npm cache clean --force && npm install"
+  command = "rm -rf node_modules package-lock.json .npm ~/.npm ~/.pnpm-store && npm cache clean --force && npm install --legacy-peer-deps && npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "18"
   NPM_CONFIG_LEGACY_PEER_DEPS = "true"
   NPM_CONFIG_USE_CACHE = "false"
+  COREPACK_ENABLE_DOWNLOAD_PROMPT = "false"
+  COREPACK_ENABLE_AUTO_PIN = "false"
+  COREPACK_ENABLE_NETWORK = "0"
 
 [build.processing]
   skip_processing = false
