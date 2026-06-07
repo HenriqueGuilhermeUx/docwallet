@@ -64,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({ onAddClick, user, onLogout }) =>
             </div>
             <div>
               <h1 className="text-xl font-bold text-slate-800">DocWallet</h1>
-              <p className="text-xs text-slate-500">Carteira Digital</p>
+              <p className="text-xs text-slate-500">by Nexa</p>
             </div>
           </div>
 
@@ -117,7 +117,7 @@ export const Hero: React.FC<{ documentCount: number; onAddClick: () => void }> =
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-              Sua Carteira Digital
+              Identidade e documentos sob seu controle
             </h2>
             <p className="text-indigo-100">
               {documentCount > 0
