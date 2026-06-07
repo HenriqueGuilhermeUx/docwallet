@@ -112,10 +112,10 @@ function App() {
               <UserCircle className="text-white" size={48} />
             </div>
             <h3 className="text-2xl font-bold text-slate-800 mb-3">
-              Bem-vindo ao DocWallet
+              DocWallet by Nexa
             </h3>
             <p className="text-slate-500 text-center max-w-md mb-8">
-              A sua carteira digital de documentos. Faça login ou cadastre-se para começar a organizar seus documentos de forma segura.
+              Seus documentos importantes, organizados, protegidos e prontos para compartilhar dentro do ecossistema Nexa. Faça login ou cadastre-se para começar a organizar seus documentos de forma segura.
             </p>
             <button
               onClick={() => setShowAuthModal(true)}
@@ -169,7 +169,7 @@ function App() {
                     className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
                   >
                     <FileKey size={18} />
-                    Identidade
+                    Nexa ID Beta
                   </button>
                 </div>
               </div>
