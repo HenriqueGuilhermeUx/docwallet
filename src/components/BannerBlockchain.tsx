@@ -16,11 +16,10 @@ export const BannerBlockchain: React.FC<BannerBlockchainProps> = ({ onLearnMore 
 
         <div className="flex-1 text-center md:text-left">
           <h3 className="text-xl font-bold text-white mb-2">
-            Seguranca Blockchain para seus Documentos
+            Prova digital para seus documentos
           </h3>
           <p className="text-white/90 text-sm md:text-base mb-4">
-            Autentique seus documentos na blockchain e crie contratos inteligentes com validade juridica.
-            Seus arquivos protegidos contra falsificacao para sempre!
+            Gere evidências digitais para reforçar autenticidade, data e integridade dos seus arquivos. Seus documentos com rastro verificável!
           </p>
 
           <div className="flex flex-wrap justify-center md:justify-start gap-3">
