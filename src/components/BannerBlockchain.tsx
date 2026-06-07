@@ -19,7 +19,7 @@ export const BannerBlockchain: React.FC<BannerBlockchainProps> = ({ onLearnMore 
             Prova digital para seus documentos
           </h3>
           <p className="text-white/90 text-sm md:text-base mb-4">
-            Gere evidências digitais para reforçar autenticidade, data e integridade dos seus arquivos. Seus documentos com rastro verificável!
+            Guarde seus documentos sem custo de upload. A prova digital é um recurso opcional para quem deseja gerar evidências de data, autenticidade e integridade.
           </p>
 
           <div className="flex flex-wrap justify-center md:justify-start gap-3">
@@ -35,15 +35,15 @@ export const BannerBlockchain: React.FC<BannerBlockchainProps> = ({ onLearnMore 
               className="px-5 py-2.5 bg-white/20 backdrop-blur text-white rounded-full font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
             >
               <Sparkles size={16} />
-              Ver Planos
+              Recursos extras
             </button>
           </div>
         </div>
 
         <div className="hidden lg:flex gap-3">
           <div className="bg-white/10 backdrop-blur rounded-xl p-4 text-center min-w-[100px]">
-            <div className="text-2xl font-bold text-white">R$5</div>
-            <div className="text-white/70 text-xs">por documento</div>
+            <div className="text-2xl font-bold text-white">Upload grátis</div>
+            <div className="text-white/70 text-xs">documentos ilimitados*</div>
           </div>
           <div className="bg-white/10 backdrop-blur rounded-xl p-4 text-center min-w-[100px]">
             <div className="text-2xl font-bold text-white">Polygon</div>
