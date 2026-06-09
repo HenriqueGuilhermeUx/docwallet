@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';  
 import { useDocumentsWithAuth } from './hooks/useDocumentsWithAuth';
 import { DocumentType } from './types/document';
 import { Document } from './types/document';
@@ -19,6 +19,8 @@ import { BlockchainPage } from './components/BlockchainPage';
 import { LogOut, UserCircle, Shield, FileSignature, FileKey } from 'lucide-react';
 import { DIDWallet } from './components/DIDWallet';
 import { ShareModal } from './components/ShareModal';
+
+const NEXA_API_URL = 'https://nexa-backend-p2u0.onrender.com/api/v1';
 
 function App() {
   const {
@@ -46,6 +48,35 @@ function App() {
   const [showShareModal, setShowShareModal] = useState(false);
   // Simulated credits - in production this would come from backend
   const [userCredits, setUserCredits] = useState(5);
+
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const nexaToken = params.get('nexaToken');
+
+  if (nexaToken) {
+    loginWithNexaToken(nexaToken);
+  }
+}, []);
+
+const loginWithNexaToken = async (nexaToken: string) => {
+  try {
+    const response = await fetch(`${NEXA_API_URL}/nexa-id/validate/${nexaToken}`);
+    const data = await response.json();
+
+    if (!data.success || !data.user) {
+      alert('Token Nexa ID inválido ou expirado');
+      return;
+    }
+
+    localStorage.setItem('docwallet_nexa_user', JSON.stringify(data.user));
+    localStorage.setItem('docwallet_nexa_token', nexaToken);
+
+    window.history.replaceState({}, document.title, window.location.pathname);
+    window.location.reload();
+  } catch (err) {
+    alert('Erro ao entrar com Nexa ID');
+  }
+};
 
   const handleAddClick = () => {
     if (!user) {
