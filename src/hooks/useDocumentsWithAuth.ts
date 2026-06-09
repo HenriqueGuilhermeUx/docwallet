@@ -1,6 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { Document } from '../types/document';
-import { supabase, signIn, signUp, signOut, onAuthStateChange } from '../lib/supabase';
+import { supabase, signOut, onAuthStateChange } from '../lib/supabase';
 import {
   uploadDocument as uploadDocToSupabase,
   fetchDocuments as fetchDocsFromSupabase,
@@ -20,8 +20,34 @@ const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substring(2);
 };
 
+function getNexaStoredUser(): any | null {
+  try {
+    const stored = localStorage.getItem('docwallet_nexa_user');
+    if (!stored) return null;
+
+    const parsed = JSON.parse(stored);
+
+    return {
+      ...parsed,
+      id: parsed.id,
+      email: parsed.email,
+      user_metadata: {
+        name: parsed.fullName,
+        nexaId: parsed.nexaId,
+        username: parsed.username,
+        walletAddress: parsed.walletAddress,
+      },
+      app_metadata: {
+        provider: 'nexa',
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const useDocumentsWithAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | any | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,13 +56,34 @@ export const useDocumentsWithAuth = () => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const loadAuth = async () => {
+      const nexaUser = getNexaStoredUser();
+
+      if (nexaUser) {
+        setUser(nexaUser);
+        setIsAuthLoading(false);
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+
       setUser(session?.user ?? null);
       setIsAuthLoading(false);
-    });
+    };
 
-    const { data: { subscription } } = onAuthStateChange((user) => {
-      setUser(user);
+    loadAuth();
+
+    const { data: { subscription } } = onAuthStateChange((supabaseUser) => {
+      const nexaUser = getNexaStoredUser();
+
+      if (nexaUser) {
+        setUser(nexaUser);
+        setIsAuthLoading(false);
+        return;
+      }
+
+      setUser(supabaseUser);
+      setIsAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -47,12 +94,18 @@ export const useDocumentsWithAuth = () => {
       loadDocuments();
     } else {
       setDocuments([]);
+      setIsLoading(false);
     }
   }, [user]);
 
   const loadDocuments = async () => {
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
+
     try {
       const docs = await fetchDocsFromSupabase(user.id);
       setDocuments(docs);
@@ -81,29 +134,46 @@ export const useDocumentsWithAuth = () => {
     }
 
     const typeInfo = { type, category: 'other' as Category };
-    if (type === 'rg' || type === 'cnh' || type === 'passport') typeInfo.category = 'ids';
-    else if (type === 'cpf' || type === 'voter_id') typeInfo.category = 'registrations';
-    else if (type === 'professional_license') typeInfo.category = 'professional';
-    else if (type === 'health_card' || type === 'vaccine_card') typeInfo.category = 'health';
+
+    if (type === 'rg' || type === 'cnh' || type === 'passport') {
+      typeInfo.category = 'ids';
+    } else if (type === 'cpf' || type === 'voter_id') {
+      typeInfo.category = 'registrations';
+    } else if (type === 'professional_license') {
+      typeInfo.category = 'professional';
+    } else if (type === 'health_card' || type === 'vaccine_card') {
+      typeInfo.category = 'health';
+    }
 
     try {
-      const newDoc = await uploadDocToSupabase(user.id, file, name, type, typeInfo.category);
+      const newDoc = await uploadDocToSupabase(
+        user.id,
+        file,
+        name,
+        type,
+        typeInfo.category,
+      );
+
       setDocuments(prev => [newDoc, ...prev]);
       showToast('Documento adicionado com sucesso!', 'success');
+
       return newDoc;
     } catch (error) {
       console.error('Error adding document:', error);
       showToast('Erro ao adicionar documento', 'error');
+
       return null;
     }
   }, [user, showToast]);
 
   const deleteDocument = useCallback(async (doc: Document) => {
     if (!user) return;
+
     try {
-      // CORREÇÃO: Usar filePath salvo no banco em vez de construir caminho incorreto
       const filePath = doc.filePath || `${user.id}/${doc.id}`;
+
       await deleteDocFromSupabase(doc.id, filePath);
+
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
       showToast('Documento excluído', 'info');
     } catch (error) {
@@ -119,11 +189,13 @@ export const useDocumentsWithAuth = () => {
   const filteredDocuments = documents.filter(doc => {
     const matchesCategory = activeCategory === 'all' || doc.category === activeCategory;
     const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase());
+
     return matchesCategory && matchesSearch;
   });
 
   const getCategoryCount = (category: Category | 'all'): number => {
     if (category === 'all') return documents.length;
+
     return documents.filter(doc => doc.category === category).length;
   };
 
@@ -131,17 +203,24 @@ export const useDocumentsWithAuth = () => {
     try {
       const link = await generateShareLink(docId);
       showToast('Link de compartilhamento criado!', 'success');
+
       return link;
     } catch (error) {
       console.error('Error creating share link:', error);
       showToast('Erro ao criar link', 'error');
+
       return '';
     }
   };
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('docwallet_nexa_user');
+      localStorage.removeItem('docwallet_nexa_token');
+
       await signOut();
+
+      setUser(null);
       setDocuments([]);
       showToast('Você foi desconectado', 'info');
     } catch (error) {
