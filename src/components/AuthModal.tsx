@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { X, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { signIn, signUp, signInWithGoogle } from '../lib/supabase';
 
 interface AuthModalProps {
@@ -16,6 +16,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isNexaLoading, setIsNexaLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const resetForm = () => {
@@ -28,6 +29,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const handleClose = () => {
     resetForm();
     onClose();
+  };
+
+  const handleNexaLogin = async () => {
+    setError(null);
+    setIsNexaLoading(true);
+
+    try {
+      setError('Abra o DocWallet pelo app Nexa para entrar automaticamente com Nexa ID.');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao entrar com Nexa ID');
+    } finally {
+      setIsNexaLoading(false);
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -88,6 +102,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         </div>
 
         <div className="p-6 space-y-4">
+          <button
+            type="button"
+            onClick={handleNexaLogin}
+            disabled={isNexaLoading}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+          >
+            {isNexaLoading ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <ShieldCheck size={20} />
+            )}
+            <span>Continuar com Nexa ID</span>
+          </button>
+
           {/* Google Login Button */}
           <button
             type="button"
