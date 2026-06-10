@@ -74,18 +74,20 @@ export const useDocumentsWithAuth = () => {
     loadAuth();
 
     const { data: { subscription } } = onAuthStateChange((supabaseUser) => {
-      const nexaUser = getNexaStoredUser();
+  const nexaUser = getNexaStoredUser();
 
-      if (nexaUser) {
-        setUser(nexaUser);
-        setIsAuthLoading(false);
-        return;
-      }
+  if (nexaUser) {
+    setUser(nexaUser);
+    setIsAuthLoading(false);
+    return;
+  }
 
-      setUser(supabaseUser);
-      setIsAuthLoading(false);
-    });
+  if (supabaseUser) {
+    setUser(supabaseUser);
+  }
 
+  setIsAuthLoading(false);
+});
     return () => subscription.unsubscribe();
   }, []);
 
