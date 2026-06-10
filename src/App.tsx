@@ -69,10 +69,12 @@ const loginWithNexaToken = async (nexaToken: string) => {
     }
 
     localStorage.setItem('docwallet_nexa_user', JSON.stringify(data.user));
-    localStorage.setItem('docwallet_nexa_token', nexaToken);
+localStorage.setItem('docwallet_nexa_token', nexaToken);
 
-    window.history.replaceState({}, document.title, window.location.pathname);
-    window.location.reload();
+window.history.replaceState({}, document.title, window.location.pathname);
+setShowAuthModal(false);
+
+alert('Login com Nexa ID realizado com sucesso. Reabra o DocWallet ou atualize a página se necessário.');
   } catch (err) {
     alert('Erro ao entrar com Nexa ID');
   }
