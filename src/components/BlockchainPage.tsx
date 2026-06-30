@@ -1,141 +1,228 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Shield,
-  FileText,
-  Upload,
-  CheckCircle,
   AlertCircle,
-  DollarSign,
+  CheckCircle,
   Copy,
   ExternalLink,
   FileSignature,
+  FileText,
+  History,
+  Loader2,
+  SearchCheck,
+  Shield,
+  Upload,
+  Wallet,
   X,
-  Briefcase,
-  Users,
-  Eye,
-  Tag,
-  CreditCard,
-  ShoppingCart
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { supabase } from '../lib/supabase';
+import { sha256File, sha256Text } from '../lib/hash';
+import { connectWallet, getTargetChain, notarizeHashOnChain, WalletConnection } from '../lib/evmWallet';
+import { fetchUserNotarizations, NotarizationRecord, saveNotarization, verifyHash } from '../lib/notarizations';
 
 interface BlockchainPageProps {
   isOpen: boolean;
   onClose: () => void;
-  userCredits: number;
-  onCreditsChange?: (credits: number) => void;
 }
 
-type TabType = 'notarize' | 'contracts' | 'history' | 'credits';
-type ContractType = 'service' | 'partnership' | 'nda' | 'sale';
+type TabType = 'notarize' | 'verify' | 'contracts' | 'history';
+type ContractType = 'prestacao_servicos' | 'compra_venda' | 'locacao_comercial' | 'emprestimo_p2p' | 'confissao_divida' | 'nda';
 
-// Pacotes de creditos
-const CREDIT_PACKAGES = [
-  { id: 'credits_5', name: '5 Creditos', credits: 5, price: 25, perDoc: 5 },
-  { id: 'credits_10', name: '10 Creditos', credits: 10, price: 45, perDoc: 4.5 },
-  { id: 'credits_20', name: '20 Creditos', credits: 20, price: 80, perDoc: 4 },
-  { id: 'credits_50', name: '50 Creditos', credits: 50, price: 175, perDoc: 3.5 },
+const CONTRACT_TYPES: { id: ContractType; name: string; description: string }[] = [
+  { id: 'prestacao_servicos', name: 'Prestação de Serviços', description: 'Contrato comercial simples para prestação de serviços.' },
+  { id: 'compra_venda', name: 'Compra e Venda', description: 'Contrato para venda de bem, item ou ativo.' },
+  { id: 'locacao_comercial', name: 'Locação Comercial', description: 'Contrato básico de locação para uso comercial.' },
+  { id: 'emprestimo_p2p', name: 'Empréstimo P2P', description: 'Instrumento de empréstimo entre pessoas.' },
+  { id: 'confissao_divida', name: 'Confissão de Dívida', description: 'Reconhecimento formal de débito.' },
+  { id: 'nda', name: 'NDA / Confidencialidade', description: 'Acordo de confidencialidade e não divulgação.' },
 ];
 
-export const BlockchainPage: React.FC<BlockchainPageProps> = ({
-  isOpen,
-  onClose,
-  userCredits,
-  onCreditsChange
-}) => {
+const generateContract = (contractType: ContractType, partyA: string, partyB: string, description: string) => {
+  const today = new Date().toLocaleDateString('pt-BR');
+  const header = `DOCWALLET — CONTRATO DIGITAL\nData: ${today}\n\n`;
+  const signature = `\n\n______________________________        ______________________________\n${partyA || 'PARTE A'}                         ${partyB || 'PARTE B'}\n\nHash e validação blockchain gerados pelo DocWallet.`;
+
+  const templates: Record<ContractType, string> = {
+    prestacao_servicos: `CONTRATO DE PRESTAÇÃO DE SERVIÇOS\n\nCONTRATANTE: ${partyA}\nCONTRATADO: ${partyB}\n\nOBJETO\n${description}\n\nAs partes acordam a prestação dos serviços descritos acima, com obrigações, prazos e valores definidos entre si. O presente instrumento poderá ser assinado eletronicamente e validado por hash em blockchain.`,
+    compra_venda: `CONTRATO DE COMPRA E VENDA\n\nVENDEDOR: ${partyA}\nCOMPRADOR: ${partyB}\n\nOBJETO\n${description}\n\nAs partes celebram a compra e venda do bem descrito, obrigando-se ao cumprimento das condições comerciais acordadas.`,
+    locacao_comercial: `CONTRATO DE LOCAÇÃO COMERCIAL\n\nLOCADOR: ${partyA}\nLOCATÁRIO: ${partyB}\n\nOBJETO DA LOCAÇÃO\n${description}\n\nO imóvel ou espaço comercial descrito será utilizado para finalidade lícita, conforme condições acordadas entre as partes.`,
+    emprestimo_p2p: `CONTRATO DE EMPRÉSTIMO ENTRE PESSOAS\n\nCREDOR: ${partyA}\nDEVEDOR: ${partyB}\n\nOBJETO\n${description}\n\nO devedor reconhece o recebimento do valor/obrigação descrito e compromete-se a restituí-lo conforme condições acordadas.`,
+    confissao_divida: `INSTRUMENTO PARTICULAR DE CONFISSÃO DE DÍVIDA\n\nCREDOR: ${partyA}\nDEVEDOR: ${partyB}\n\nOBJETO\n${description}\n\nO devedor confessa a dívida descrita acima, assumindo obrigação de pagamento nos termos acordados entre as partes.`,
+    nda: `ACORDO DE CONFIDENCIALIDADE E NÃO DIVULGAÇÃO\n\nPARTE DIVULGANTE: ${partyA}\nPARTE RECEPTORA: ${partyB}\n\nOBJETO\n${description}\n\nA parte receptora compromete-se a manter sigilo sobre informações técnicas, comerciais, estratégicas e operacionais relacionadas ao objeto acima.`,
+  };
+
+  return `${header}${templates[contractType]}${signature}`;
+};
+
+export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<TabType>('notarize');
+  const [wallet, setWallet] = useState<WalletConnection | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [fileHash, setFileHash] = useState<string | null>(null);
-  const [isCalculatingHash, setIsCalculatingHash] = useState(false);
-  const [isNotarizing, setIsNotarizing] = useState(false);
-  const [notarizationResult, setNotarizationResult] = useState<any>(null);
-  const [selectedContract, setSelectedContract] = useState<ContractType | null>(null);
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [isBuyingCredits, setIsBuyingCredits] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
-  const [showPixModal, setShowPixModal] = useState(false);
-  const [pixCode, setPixCode] = useState<string | null>(null);
+  const [fileHash, setFileHash] = useState<string>('');
+  const [isHashing, setIsHashing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [result, setResult] = useState<NotarizationRecord | null>(null);
+  const [verifyFile, setVerifyFile] = useState<File | null>(null);
+  const [verifyResult, setVerifyResult] = useState<NotarizationRecord | null>(null);
+  const [verifyMessage, setVerifyMessage] = useState<string>('');
+  const [history, setHistory] = useState<NotarizationRecord[]>([]);
+  const [error, setError] = useState<string>('');
+  const [contractType, setContractType] = useState<ContractType>('prestacao_servicos');
+  const [partyA, setPartyA] = useState('');
+  const [partyB, setPartyB] = useState('');
+  const [contractDescription, setContractDescription] = useState('');
+  const [contractContent, setContractContent] = useState('');
 
-  const contracts = [
-    { type: 'service' as ContractType, name: 'Prestacao de Servicos', icon: Briefcase, description: 'Contrato para servicos profissionais' },
-    { type: 'partnership' as ContractType, name: 'Parceria Comercial', icon: Users, description: 'Acordo de cooperacao entre empresas' },
-    { type: 'nda' as ContractType, name: 'NDA - Confidencialidade', icon: Eye, description: 'Acordo de nao divulgacao' },
-    { type: 'sale' as ContractType, name: 'Compra e Venda', icon: Tag, description: 'Contrato de compra e venda' },
-  ];
+  const targetChain = getTargetChain();
+  const price = import.meta.env.VITE_DOCWALLET_NOTARIZATION_PRICE_NATIVE || '0.01';
 
-  const calculateFileHash = async (file: File) => {
-    setIsCalculatingHash(true);
+  const loadHistory = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const records = await fetchUserNotarizations(user.id);
+    setHistory(records);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadHistory().catch(() => undefined);
+    }
+  }, [isOpen]);
+
+  const handleConnectWallet = async () => {
+    setError('');
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      setFileHash(hashHex);
-      setSelectedFile(file);
-    } catch (error) {
-      console.error('Erro ao calcular hash:', error);
+      const connection = await connectWallet();
+      setWallet(connection);
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao conectar carteira.');
+    }
+  };
+
+  const handleFileSelect = async (file: File) => {
+    setError('');
+    setSelectedFile(file);
+    setResult(null);
+    setIsHashing(true);
+
+    try {
+      const hash = await sha256File(file);
+      setFileHash(hash);
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao calcular hash do arquivo.');
     } finally {
-      setIsCalculatingHash(false);
+      setIsHashing(false);
     }
   };
 
-  const handleFileDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) calculateFileHash(file);
-  };
+  const handleNotarizeFile = async () => {
+    if (!selectedFile || !fileHash) return;
 
-  const handleNotarize = async () => {
-    if (!fileHash || userCredits <= 0) return;
+    setError('');
+    setIsSubmitting(true);
 
-    setIsNotarizing(true);
-    // Simular autenticacao
-    setTimeout(() => {
-      setNotarizationResult({
-        success: true,
-        txHash: '0x' + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join(''),
-        timestamp: new Date().toISOString(),
-        hash: fileHash,
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Faça login antes de validar um documento em blockchain.');
+
+      const receipt = await notarizeHashOnChain(fileHash);
+      const record = await saveNotarization({
+        userId: user.id,
+        documentId: null,
+        documentName: selectedFile.name,
+        fileHash,
+        receipt,
       });
-      // Debitar credito
-      if (onCreditsChange) {
-        onCreditsChange(userCredits - 1);
-      }
-      setIsNotarizing(false);
-    }, 2000);
-  };
 
-  const handleBuyCredits = (pkgId: string) => {
-    const pkg = CREDIT_PACKAGES.find(p => p.id === pkgId);
-    if (!pkg) return;
-
-    setSelectedPackage(pkgId);
-    setIsBuyingCredits(true);
-
-    // Simular QR Code PIX (em producao, seria gerado pelo Mercado Pago)
-    const fakePix = '00020126580014br.gov.bcb.pix0136' +
-      Math.random().toString(36).substring(2) +
-      '520400005303986540' +
-      pkg.price.toFixed(2).replace('.', '') +
-      '5802BR5924000096530398202048';
-
-    setPixCode(fakePix);
-    setShowPixModal(true);
-  };
-
-  const handleConfirmPayment = () => {
-    const pkg = CREDIT_PACKAGES.find(p => p.id === selectedPackage);
-    if (pkg && onCreditsChange) {
-      onCreditsChange(userCredits + pkg.credits);
+      setResult(record);
+      setWallet({ address: receipt.walletAddress, chainId: receipt.chainId, balance: wallet?.balance || '0' });
+      await loadHistory();
+    } catch (err: any) {
+      setError(err?.shortMessage || err?.message || 'Erro ao registrar na blockchain.');
+    } finally {
+      setIsSubmitting(false);
     }
-    setShowPixModal(false);
-    setSelectedPackage(null);
-    setPixCode(null);
-    alert('Creditos adicionados! (Em producao, isso aconteceria apos confirmacao do Mercado Pago)');
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const handleVerifyFile = async (file: File) => {
+    setError('');
+    setVerifyFile(file);
+    setVerifyResult(null);
+    setVerifyMessage('Calculando hash...');
+
+    try {
+      const hash = await sha256File(file);
+      const record = await verifyHash(hash);
+
+      if (record) {
+        setVerifyResult(record);
+        setVerifyMessage('Documento autêntico: hash encontrado no registro DocWallet.');
+      } else {
+        setVerifyMessage('Documento não encontrado. O hash deste arquivo não possui certificado DocWallet.');
+      }
+    } catch (err: any) {
+      setVerifyMessage('');
+      setError(err?.message || 'Erro ao verificar documento.');
+    }
+  };
+
+  const handleGenerateContract = async () => {
+    setError('');
+    setResult(null);
+
+    if (!partyA.trim() || !partyB.trim() || !contractDescription.trim()) {
+      setError('Preencha as partes e o objeto do contrato.');
+      return;
+    }
+
+    const content = generateContract(contractType, partyA.trim(), partyB.trim(), contractDescription.trim());
+    setContractContent(content);
+  };
+
+  const handleNotarizeContract = async () => {
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Faça login antes de validar um contrato em blockchain.');
+      if (!contractContent) throw new Error('Gere o contrato antes de registrar em blockchain.');
+
+      const hash = await sha256Text(contractContent);
+      const receipt = await notarizeHashOnChain(hash);
+      const selected = CONTRACT_TYPES.find((item) => item.id === contractType);
+      const record = await saveNotarization({
+        userId: user.id,
+        documentId: null,
+        documentName: selected?.name || 'Contrato DocWallet',
+        fileHash: hash,
+        receipt,
+      });
+
+      setResult(record);
+      await loadHistory();
+    } catch (err: any) {
+      setError(err?.shortMessage || err?.message || 'Erro ao registrar contrato.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDownloadContract = () => {
+    if (!contractContent) return;
+
+    const blob = new Blob([contractContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement('a');
+    link.href = url;
+    link.download = 'contrato-docwallet.txt';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const copyToClipboard = (value: string) => {
+    navigator.clipboard.writeText(value).catch(() => undefined);
   };
 
   if (!isOpen) return null;
@@ -143,17 +230,16 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm overflow-y-auto">
       <div className="min-h-screen py-8 px-4">
-        <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
-          {/* Header */}
+        <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
                   <Shield className="text-white" size={28} />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-white">DocWallet Blockchain</h2>
-                  <p className="text-white/80 text-sm">Autenticacao e Contratos Inteligentes</p>
+                  <p className="text-white/80 text-sm">Validação real via carteira EVM + hash SHA-256</p>
                 </div>
               </div>
               <button onClick={onClose} className="text-white/80 hover:text-white p-2">
@@ -161,423 +247,201 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({
               </button>
             </div>
 
-            {/* Credits Badge */}
-            <div className="mt-4 inline-flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-4 py-2">
-              <DollarSign className="text-white" size={16} />
-              <span className="text-white font-semibold">{userCredits}</span>
-              <span className="text-white/80 text-sm">creditos disponiveis</span>
+            <div className="mt-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="text-white/90 text-sm">
+                Rede: <strong>{targetChain.networkName}</strong> • Custo por validação: <strong>{price} {targetChain.nativeCurrency.symbol}</strong>
+              </div>
+              <button
+                onClick={handleConnectWallet}
+                className="px-4 py-2 rounded-xl bg-white text-indigo-700 font-semibold flex items-center justify-center gap-2"
+              >
+                <Wallet size={18} />
+                {wallet ? `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}` : 'Conectar carteira'}
+              </button>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex border-b border-slate-200 flex-wrap">
-            <button
-              onClick={() => setActiveTab('notarize')}
-              className={`flex-1 py-3 px-4 font-medium text-center transition-colors text-sm ${
-                activeTab === 'notarize'
-                  ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Shield className="inline mr-1" size={16} />
-              Autenticar
+          <div className="grid grid-cols-2 md:grid-cols-4 border-b border-slate-200">
+            <button onClick={() => setActiveTab('notarize')} className={`py-3 px-4 text-sm font-semibold ${activeTab === 'notarize' ? 'text-indigo-600 bg-indigo-50 border-b-2 border-indigo-600' : 'text-slate-500'}`}>
+              <Shield className="inline mr-1" size={16} /> Validar
             </button>
-            <button
-              onClick={() => setActiveTab('contracts')}
-              className={`flex-1 py-3 px-4 font-medium text-center transition-colors text-sm ${
-                activeTab === 'contracts'
-                  ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <FileSignature className="inline mr-1" size={16} />
-              Contratos
+            <button onClick={() => setActiveTab('verify')} className={`py-3 px-4 text-sm font-semibold ${activeTab === 'verify' ? 'text-indigo-600 bg-indigo-50 border-b-2 border-indigo-600' : 'text-slate-500'}`}>
+              <SearchCheck className="inline mr-1" size={16} /> Verificar
             </button>
-            <button
-              onClick={() => setActiveTab('credits')}
-              className={`flex-1 py-3 px-4 font-medium text-center transition-colors text-sm ${
-                activeTab === 'credits'
-                  ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <CreditCard className="inline mr-1" size={16} />
-              Comprar Creditos
+            <button onClick={() => setActiveTab('contracts')} className={`py-3 px-4 text-sm font-semibold ${activeTab === 'contracts' ? 'text-indigo-600 bg-indigo-50 border-b-2 border-indigo-600' : 'text-slate-500'}`}>
+              <FileSignature className="inline mr-1" size={16} /> Contratos
             </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`flex-1 py-3 px-4 font-medium text-center transition-colors text-sm ${
-                activeTab === 'history'
-                  ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <CheckCircle className="inline mr-1" size={16} />
-              Historico
+            <button onClick={() => setActiveTab('history')} className={`py-3 px-4 text-sm font-semibold ${activeTab === 'history' ? 'text-indigo-600 bg-indigo-50 border-b-2 border-indigo-600' : 'text-slate-500'}`}>
+              <History className="inline mr-1" size={16} /> Histórico
             </button>
           </div>
 
-          {/* Content */}
           <div className="p-6">
-            {/* Tab: Notarize */}
+            {error && (
+              <div className="mb-5 bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3 text-red-700">
+                <AlertCircle size={22} className="flex-shrink-0" />
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
             {activeTab === 'notarize' && (
-              <div className="space-y-6">
-                {!notarizationResult ? (
-                  <>
-                    {/* Upload Area */}
-                    <div
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={handleFileDrop}
-                      className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-400 transition-colors cursor-pointer"
-                      onClick={() => document.getElementById('file-input')?.click()}
-                    >
-                      <input
-                        id="file-input"
-                        type="file"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) calculateFileHash(file);
-                        }}
-                      />
-                      <Upload className="mx-auto text-slate-400 mb-4" size={48} />
-                      <p className="text-slate-600 font-medium mb-2">
-                        Arraste ou clique para selecionar
-                      </p>
-                      <p className="text-slate-400 text-sm">
-                        PDF, JPG, PNG (max. 10MB)
-                      </p>
+              <div className="space-y-5">
+                <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-400 transition-colors cursor-pointer" onClick={() => window.document.getElementById('notarize-file')?.click()}>
+                  <input
+                    id="notarize-file"
+                    type="file"
+                    className="hidden"
+                    accept="image/jpeg,image/png,application/pdf"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) handleFileSelect(file);
+                    }}
+                  />
+                  <Upload className="mx-auto text-slate-400 mb-4" size={48} />
+                  <p className="text-slate-700 font-semibold">Selecione o documento para validar</p>
+                  <p className="text-slate-400 text-sm mt-1">PDF, JPG ou PNG. O arquivo não vai para a blockchain; apenas o hash.</p>
+                </div>
+
+                {selectedFile && (
+                  <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <FileText className="text-indigo-600" size={24} />
+                      <div>
+                        <p className="font-semibold text-slate-800">{selectedFile.name}</p>
+                        <p className="text-sm text-slate-500">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                      </div>
                     </div>
-
-                    {/* File Info */}
-                    {selectedFile && (
-                      <div className="bg-slate-50 rounded-xl p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <FileText className="text-indigo-600" size={24} />
-                          <div className="flex-1">
-                            <p className="font-medium text-slate-800">{selectedFile.name}</p>
-                            <p className="text-sm text-slate-500">
-                              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                            </p>
-                          </div>
-                        </div>
-
-                        {isCalculatingHash && (
-                          <div className="flex items-center gap-2 text-slate-500">
-                            <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                            <span>Calculando hash SHA-256...</span>
-                          </div>
-                        )}
-
-                        {fileHash && !isCalculatingHash && (
-                          <div className="bg-white rounded-lg p-3 border border-slate-200">
-                            <p className="text-xs text-slate-500 mb-1">Hash SHA-256 (Impressao Digital)</p>
-                            <code className="text-xs text-indigo-600 break-all">{fileHash}</code>
-                          </div>
-                        )}
+                    {isHashing ? (
+                      <div className="flex items-center gap-2 text-slate-500"><Loader2 className="animate-spin" size={18} /> Calculando SHA-256...</div>
+                    ) : (
+                      <div className="bg-white border border-slate-200 rounded-lg p-3">
+                        <p className="text-xs text-slate-500 mb-1">Hash SHA-256</p>
+                        <code className="text-xs text-indigo-600 break-all">{fileHash}</code>
                       </div>
                     )}
-
-                    {/* Notarize Button */}
-                    <button
-                      onClick={handleNotarize}
-                      disabled={!fileHash || isCalculatingHash || isNotarizing || userCredits <= 0}
-                      className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {isNotarizing ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Registrando na Blockchain...
-                        </>
-                      ) : (
-                        <>
-                          <Shield size={20} />
-                          Autenticar na Blockchain (1 credito)
-                        </>
-                      )}
-                    </button>
-
-                    {userCredits <= 0 && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
-                        <AlertCircle className="text-amber-600 flex-shrink-0" size={24} />
-                        <div className="flex-1">
-                          <p className="font-medium text-amber-800">Sem creditos</p>
-                          <p className="text-sm text-amber-600">Adquira creditos para autenticar documentos</p>
-                        </div>
-                        <button
-                          onClick={() => setActiveTab('credits')}
-                          className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium"
-                        >
-                          Comprar
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center space-y-6">
-                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                      <CheckCircle className="text-green-600" size={48} />
-                    </div>
-
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-800 mb-2">Documento Autenticado!</h3>
-                      <p className="text-slate-500">Seu documento foi registrado na blockchain Polygon</p>
-                    </div>
-
-                    <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-                      <div>
-                        <p className="text-xs text-slate-500 mb-1">Transaction Hash</p>
-                        <div className="flex items-center gap-2 bg-white rounded-lg p-2 border">
-                          <code className="text-xs text-indigo-600 flex-1 break-all">
-                            {notarizationResult.txHash}
-                          </code>
-                          <button
-                            onClick={() => copyToClipboard(notarizationResult.txHash)}
-                            className="p-1 hover:bg-slate-100 rounded"
-                          >
-                            <Copy size={14} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <a
-                          href={`https://polygonscan.com/tx/${notarizationResult.txHash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-indigo-700"
-                        >
-                          Ver no PolygonScan
-                          <ExternalLink size={14} />
-                        </a>
-                        <button
-                          onClick={() => setShowQRModal(true)}
-                          className="py-2 px-4 bg-slate-200 text-slate-700 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-slate-300"
-                        >
-                          QR Code
-                        </button>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setNotarizationResult(null);
-                        setSelectedFile(null);
-                        setFileHash(null);
-                      }}
-                      className="text-indigo-600 font-medium hover:underline"
-                    >
-                      Autenticar outro documento
-                    </button>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Tab: Contracts */}
-            {activeTab === 'contracts' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">Escolha o tipo de contrato</h3>
-                  <p className="text-slate-500 text-sm">Selecione um modelo para criar seu contrato inteligente</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {contracts.map((contract) => {
-                    const IconComponent = contract.icon;
-                    return (
-                      <button
-                        key={contract.type}
-                        onClick={() => setSelectedContract(contract.type)}
-                        className={`p-6 rounded-xl border-2 text-left transition-all ${
-                          selectedContract === contract.type
-                            ? 'border-indigo-600 bg-indigo-50'
-                            : 'border-slate-200 hover:border-indigo-300'
-                        }`}
-                      >
-                        <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-3">
-                          <IconComponent className="text-indigo-600" size={24} />
-                        </div>
-                        <h4 className="font-bold text-slate-800 mb-1">{contract.name}</h4>
-                        <p className="text-sm text-slate-500">{contract.description}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {selectedContract && (
-                  <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-200">
-                    <h4 className="font-bold text-slate-800 mb-4">Formulario do Contrato</h4>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Parte 1</label>
-                          <input type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Nome / CNPJ" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Parte 2</label>
-                          <input type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Nome / CNPJ" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Objeto / Descricao</label>
-                        <textarea className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows={3} placeholder="Descreva o objeto do contrato..."></textarea>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Valor</label>
-                          <input type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="R$ 0,00" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Data de Vigencia</label>
-                          <input type="date" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                        </div>
-                      </div>
-                      <button
-                        disabled={userCredits < 2}
-                        className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <FileSignature size={20} />
-                        Gerar Contrato (2 creditos)
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Tab: Credits */}
-            {activeTab === 'credits' && (
-              <div className="space-y-6">
-                <div className="text-center mb-8">
-                  <ShoppingCart className="mx-auto text-indigo-600 mb-4" size={48} />
-                  <h3 className="text-xl font-bold text-slate-800 mb-2">Comprar Creditos</h3>
-                  <p className="text-slate-500">Escolha um pacote de creditos para autenticacao de documentos</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {CREDIT_PACKAGES.map((pkg) => (
-                    <button
-                      key={pkg.id}
-                      onClick={() => handleBuyCredits(pkg.id)}
-                      disabled={isBuyingCredits}
-                      className="p-6 rounded-xl border-2 border-slate-200 hover:border-indigo-400 transition-all text-left relative overflow-hidden"
-                    >
-                      {pkg.credits >= 20 && (
-                        <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-2 py-1 rounded-bl-lg">
-                          Melhor custo
-                        </div>
-                      )}
-                      <div className="text-3xl font-bold text-indigo-600 mb-2">{pkg.credits}</div>
-                      <div className="text-lg font-semibold text-slate-800 mb-1">{pkg.name}</div>
-                      <div className="text-2xl font-bold text-slate-900 mb-2">R$ {pkg.price}</div>
-                      <div className="text-sm text-slate-500">R$ {pkg.perDoc.toFixed(2)} por documento</div>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="bg-slate-50 rounded-xl p-4 mt-6">
-                  <h4 className="font-semibold text-slate-800 mb-2">Como funciona?</h4>
-                  <ul className="text-sm text-slate-600 space-y-2">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="text-green-500 flex-shrink-0 mt-0.5" size={16} />
-                      Pague via PIX com qualquer banco
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="text-green-500 flex-shrink-0 mt-0.5" size={16} />
-                      Creditos adicionados automaticamente apos confirmacao
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="text-green-500 flex-shrink-0 mt-0.5" size={16} />
-                      Documentos autenticados para sempre na blockchain
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {/* Tab: History */}
-            {activeTab === 'history' && (
-              <div className="text-center py-12">
-                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="text-slate-400" size={40} />
-                </div>
-                <h3 className="text-lg font-bold text-slate-800 mb-2">Nenhum documento autenticado</h3>
-                <p className="text-slate-500 mb-6">Seus documentos autenticados aparecerao aqui</p>
                 <button
-                  onClick={() => setActiveTab('notarize')}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold">
-                  Autenticar primeiro documento
+                  onClick={handleNotarizeFile}
+                  disabled={!selectedFile || !fileHash || isSubmitting || isHashing}
+                  className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <Shield size={20} />}
+                  {isSubmitting ? 'Enviando transação para blockchain...' : `Pagar e registrar (${price} ${targetChain.nativeCurrency.symbol})`}
                 </button>
+              </div>
+            )}
+
+            {activeTab === 'verify' && (
+              <div className="space-y-5">
+                <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-400 transition-colors cursor-pointer" onClick={() => window.document.getElementById('verify-file')?.click()}>
+                  <input
+                    id="verify-file"
+                    type="file"
+                    className="hidden"
+                    accept="image/jpeg,image/png,application/pdf"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) handleVerifyFile(file);
+                    }}
+                  />
+                  <SearchCheck className="mx-auto text-slate-400 mb-4" size={48} />
+                  <p className="text-slate-700 font-semibold">Verificar autenticidade de um arquivo</p>
+                  <p className="text-slate-400 text-sm mt-1">O DocWallet calcula o hash e compara com certificados registrados.</p>
+                </div>
+
+                {verifyFile && (
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <p className="font-semibold text-slate-800">{verifyFile.name}</p>
+                    <p className="text-sm text-slate-500 mt-1">{verifyMessage}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'contracts' && (
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Tipo de contrato</label>
+                    <select value={contractType} onChange={(event) => setContractType(event.target.value as ContractType)} className="mt-1 w-full border border-slate-300 rounded-xl px-4 py-3">
+                      {CONTRACT_TYPES.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Parte A</label>
+                    <input value={partyA} onChange={(event) => setPartyA(event.target.value)} className="mt-1 w-full border border-slate-300 rounded-xl px-4 py-3" placeholder="Nome da parte A" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Parte B</label>
+                    <input value={partyB} onChange={(event) => setPartyB(event.target.value)} className="mt-1 w-full border border-slate-300 rounded-xl px-4 py-3" placeholder="Nome da parte B" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Objeto / descrição</label>
+                    <textarea value={contractDescription} onChange={(event) => setContractDescription(event.target.value)} className="mt-1 w-full border border-slate-300 rounded-xl px-4 py-3 min-h-[120px]" placeholder="Descreva o objeto do contrato" />
+                  </div>
+                  <button onClick={handleGenerateContract} className="w-full py-3 bg-slate-800 text-white rounded-xl font-semibold">Gerar contrato</button>
+                  <button onClick={handleNotarizeContract} disabled={!contractContent || isSubmitting} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+                    {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Shield size={18} />}
+                    Registrar contrato em blockchain
+                  </button>
+                </div>
+                <div className="bg-slate-950 text-slate-100 rounded-xl p-4 min-h-[420px] overflow-auto">
+                  {contractContent ? (
+                    <>
+                      <pre className="whitespace-pre-wrap text-sm">{contractContent}</pre>
+                      <button onClick={handleDownloadContract} className="mt-4 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm">Baixar TXT</button>
+                    </>
+                  ) : (
+                    <p className="text-slate-400 text-sm">Preencha os dados e gere o contrato para visualizar aqui.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'history' && (
+              <div className="space-y-3">
+                {history.length === 0 ? (
+                  <p className="text-slate-500 text-center py-10">Nenhum certificado blockchain ainda.</p>
+                ) : history.map((item) => (
+                  <div key={item.id} className="border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-800">{item.document_name}</p>
+                      <p className="text-xs text-slate-500 mt-1">Certificado: {item.certificate_id}</p>
+                      <p className="text-xs text-slate-500">Hash: {item.file_hash}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => copyToClipboard(item.tx_hash)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200"><Copy size={18} /></button>
+                      <a href={item.explorer_url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"><ExternalLink size={18} /></a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(result || verifyResult) && (
+              <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+                <div className="flex flex-col md:flex-row gap-5">
+                  <div className="bg-white rounded-xl p-3 w-fit">
+                    <QRCodeSVG value={(result || verifyResult)?.explorer_url || ''} size={120} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 text-emerald-700 font-bold mb-2">
+                      <CheckCircle size={22} /> Certificado DocWallet confirmado
+                    </div>
+                    <p className="text-sm text-slate-700">Certificado: <strong>{(result || verifyResult)?.certificate_id}</strong></p>
+                    <p className="text-sm text-slate-700">Rede: {(result || verifyResult)?.network_name}</p>
+                    <p className="text-sm text-slate-700 break-all">TX: {(result || verifyResult)?.tx_hash}</p>
+                    <a href={(result || verifyResult)?.explorer_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 mt-3 text-indigo-600 font-semibold">
+                      Ver no explorador <ExternalLink size={16} />
+                    </a>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </div>
-
-        {/* QR Modal */}
-        {showQRModal && notarizationResult && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center">
-              <h3 className="text-lg font-bold mb-4">QR Code para Verificacao</h3>
-              <div className="bg-white p-4 rounded-xl border inline-block mb-4">
-                <QRCodeSVG
-                  value={`https://docwallet.app/verify/${notarizationResult.txHash}`}
-                  size={200}
-                  level="M"
-                />
-              </div>
-              <p className="text-sm text-slate-500 mb-4">
-                Escaneie para verificar a autenticidade do documento
-              </p>
-              <button
-                onClick={() => setShowQRModal(false)}
-                className="w-full py-2 bg-slate-200 text-slate-700 rounded-lg font-medium"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* PIX Modal */}
-        {showPixModal && pixCode && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center">
-              <h3 className="text-lg font-bold mb-4">Pagamento PIX</h3>
-              <div className="bg-slate-100 rounded-xl p-4 mb-4">
-                <QRCodeSVG
-                  value={pixCode}
-                  size={180}
-                  level="M"
-                />
-              </div>
-              <p className="text-xs text-slate-500 mb-4 break-all">
-                {pixCode.substring(0, 50)}...
-              </p>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm">
-                <p className="text-amber-800 font-medium">Modo Demo</p>
-                <p className="text-amber-600 text-xs">Clique em "Confirmar" para simular pagamento aprovado</p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setShowPixModal(false);
-                    setSelectedPackage(null);
-                    setPixCode(null);
-                  }}
-                  className="flex-1 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleConfirmPayment}
-                  className="flex-1 py-2 bg-green-600 text-white rounded-lg font-medium"
-                >
-                  Confirmar Pagamento
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
