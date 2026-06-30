@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';  
+import { useEffect, useState } from 'react';
 import { useDocumentsWithAuth } from './hooks/useDocumentsWithAuth';
 import { DocumentType } from './types/document';
 import { Document } from './types/document';
@@ -16,13 +16,29 @@ import { DocumentViewerModal } from './components/DocumentViewerModal';
 import { AuthModal } from './components/AuthModal';
 import { BannerBlockchain } from './components/BannerBlockchain';
 import { BlockchainPage } from './components/BlockchainPage';
-import { LogOut, UserCircle, Shield, FileSignature, FileKey } from 'lucide-react';
+import { UserCircle, Shield, FileSignature, FileKey } from 'lucide-react';
 import { DIDWallet } from './components/DIDWallet';
 import { ShareModal } from './components/ShareModal';
+import { SharedDocumentPage } from './components/SharedDocumentPage';
 
 const NEXA_API_URL = 'https://nexa-backend-p2u0.onrender.com/api/v1';
 
+const getShareIdFromPath = (): string | null => {
+  const match = window.location.pathname.match(/^\/share\/([^/?#]+)/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+};
+
 function App() {
+  const shareId = getShareIdFromPath();
+
+  if (shareId) {
+    return <SharedDocumentPage shareId={shareId} />;
+  }
+
+  return <DocWalletApp />;
+}
+
+function DocWalletApp() {
   const {
     user,
     documents,
@@ -50,35 +66,36 @@ function App() {
   const [userCredits, setUserCredits] = useState(5);
 
   useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const nexaToken = params.get('nexaToken');
+    const params = new URLSearchParams(window.location.search);
+    const nexaToken = params.get('nexaToken');
 
-  if (nexaToken) {
-    loginWithNexaToken(nexaToken);
-  }
-}, []);
-
-const loginWithNexaToken = async (nexaToken: string) => {
-  try {
-    const response = await fetch(`${NEXA_API_URL}/nexa-id/validate/${nexaToken}`);
-    const data = await response.json();
-
-    if (!data.success || !data.user) {
-      alert('Token Nexa ID inválido ou expirado');
-      return;
+    if (nexaToken) {
+      loginWithNexaToken(nexaToken);
     }
+  }, []);
 
-    localStorage.setItem('docwallet_nexa_user', JSON.stringify(data.user));
-localStorage.setItem('docwallet_nexa_token', nexaToken);
+  const loginWithNexaToken = async (nexaToken: string) => {
+    try {
+      const response = await fetch(`${NEXA_API_URL}/nexa-id/validate/${nexaToken}`);
+      const data = await response.json();
 
-window.history.replaceState({}, document.title, window.location.pathname);
-setShowAuthModal(false);
+      if (!data.success || !data.user) {
+        alert('Token Nexa ID inválido ou expirado');
+        return;
+      }
 
-alert('Login com Nexa ID realizado com sucesso. Reabra o DocWallet ou atualize a página se necessário.');
-  } catch (err) {
-    alert('Erro ao entrar com Nexa ID');
-  }
-};
+      localStorage.setItem('docwallet_nexa_user', JSON.stringify(data.user));
+      localStorage.setItem('docwallet_nexa_token', nexaToken);
+
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setShowAuthModal(false);
+
+      // Recarrega sem o token na URL para o hook de autenticação ler o usuário Nexa salvo.
+      window.location.reload();
+    } catch (err) {
+      alert('Erro ao entrar com Nexa ID');
+    }
+  };
 
   const handleAddClick = () => {
     if (!user) {
