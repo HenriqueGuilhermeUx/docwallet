@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Download, Share2, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
+import { X, Download, Share2, Trash2, ZoomIn, ZoomOut, ShieldCheck } from 'lucide-react';
 import { Document, getDocumentTypeInfo } from '../types/document';
 import { formatDate } from '../utils/helpers';
 import { ShareModal } from './ShareModal';
@@ -7,7 +7,7 @@ import { ShareModal } from './ShareModal';
 interface DocumentViewerModalProps {
   document: Document;
   onClose: () => void;
-  onDelete: (document: Document) => void; // CORRIGIDO: Accept Document, not string
+  onDelete: (document: Document) => void;
 }
 
 export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ document, onClose, onDelete }) => {
@@ -16,18 +16,20 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
   const [zoom, setZoom] = useState(1);
 
   const typeInfo = getDocumentTypeInfo(document.type);
+  const isPdf = document.fileType === 'application/pdf';
 
   const handleDownload = () => {
     if (!document.fileData) return;
 
-    const link = document.createElement('a');
+    const link = window.document.createElement('a');
     link.href = document.fileData;
-    link.download = `${document.name}.${document.fileType.split('/')[1]}`;
+    link.download = `${document.name}.${document.fileType.split('/')[1] || 'arquivo'}`;
+    link.rel = 'noopener noreferrer';
     link.click();
   };
 
   const handleDelete = () => {
-    onDelete(document); // CORRIGIDO: Pass full document object
+    onDelete(document);
     onClose();
   };
 
@@ -41,8 +43,14 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
                 <span className="text-white font-semibold">{typeInfo.labelPt.substring(0, 2)}</span>
               </div>
               <div>
-                <h3 className="text-white font-semibold">{document.name}</h3>
+                <h3 className="text-white font-semibold flex items-center gap-2">
+                  {document.name}
+                  {document.isNotarized && <ShieldCheck className="text-emerald-300" size={18} />}
+                </h3>
                 <p className="text-white/60 text-sm">{formatDate(document.createdAt)}</p>
+                {document.fileHash && (
+                  <p className="text-white/50 text-xs max-w-[70vw] truncate">SHA-256: {document.fileHash}</p>
+                )}
               </div>
             </div>
             <button
@@ -55,43 +63,53 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
         </div>
 
         <div
-          className="relative w-full h-full flex items-center justify-center overflow-auto p-4 pt-20 pb-24"
-          onClick={() => setZoom(zoom === 1 ? 1.5 : 1)}
+          className="relative w-full h-full flex items-center justify-center overflow-auto p-4 pt-24 pb-24"
+          onClick={() => !isPdf && setZoom(zoom === 1 ? 1.5 : 1)}
         >
           <div
-            style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s ease' }}
+            style={{ transform: isPdf ? 'none' : `scale(${zoom})`, transition: 'transform 0.2s ease' }}
             className="max-w-full max-h-full"
           >
             {document.fileData ? (
-              <img
-                src={document.fileData}
-                alt={document.name}
-                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              />
+              isPdf ? (
+                <iframe
+                  src={document.fileData}
+                  title={document.name}
+                  className="w-[92vw] h-[78vh] max-w-5xl rounded-lg shadow-2xl bg-white"
+                />
+              ) : (
+                <img
+                  src={document.fileData}
+                  alt={document.name}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                />
+              )
             ) : (
               <div className="w-64 h-80 bg-slate-800 rounded-xl flex items-center justify-center">
-                <p className="text-slate-500">Sem imagem</p>
+                <p className="text-slate-500">Arquivo indisponível</p>
               </div>
             )}
           </div>
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 z-10">
-          <div className="flex items-center justify-center gap-4">
-            <button
-              onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}
-              className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <ZoomOut className="text-white" size={20} />
-            </button>
-            <span className="text-white/60 text-sm w-12 text-center">{Math.round(zoom * 100)}%</span>
-            <button
-              onClick={() => setZoom(z => Math.min(3, z + 0.25))}
-              className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <ZoomIn className="text-white" size={20} />
-            </button>
-          </div>
+          {!isPdf && (
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}
+                className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <ZoomOut className="text-white" size={20} />
+              </button>
+              <span className="text-white/60 text-sm w-12 text-center">{Math.round(zoom * 100)}%</span>
+              <button
+                onClick={() => setZoom(z => Math.min(3, z + 0.25))}
+                className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <ZoomIn className="text-white" size={20} />
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center justify-center gap-3 mt-4">
             <button
