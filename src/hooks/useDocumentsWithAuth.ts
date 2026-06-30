@@ -20,34 +20,8 @@ const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substring(2);
 };
 
-function getNexaStoredUser(): any | null {
-  try {
-    const stored = localStorage.getItem('docwallet_nexa_user');
-    if (!stored) return null;
-
-    const parsed = JSON.parse(stored);
-
-    return {
-      ...parsed,
-      id: parsed.id,
-      email: parsed.email,
-      user_metadata: {
-        name: parsed.fullName,
-        nexaId: parsed.nexaId,
-        username: parsed.username,
-        walletAddress: parsed.walletAddress,
-      },
-      app_metadata: {
-        provider: 'nexa',
-      },
-    };
-  } catch {
-    return null;
-  }
-}
-
 export const useDocumentsWithAuth = () => {
-  const [user, setUser] = useState<User | any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,16 +31,7 @@ export const useDocumentsWithAuth = () => {
 
   useEffect(() => {
     const loadAuth = async () => {
-      const nexaUser = getNexaStoredUser();
-
-      if (nexaUser) {
-        setUser(nexaUser);
-        setIsAuthLoading(false);
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
-
       setUser(session?.user ?? null);
       setIsAuthLoading(false);
     };
@@ -74,20 +39,10 @@ export const useDocumentsWithAuth = () => {
     loadAuth();
 
     const { data: { subscription } } = onAuthStateChange((supabaseUser) => {
-  const nexaUser = getNexaStoredUser();
+      setUser(supabaseUser);
+      setIsAuthLoading(false);
+    });
 
-  if (nexaUser) {
-    setUser(nexaUser);
-    setIsAuthLoading(false);
-    return;
-  }
-
-  if (supabaseUser) {
-    setUser(supabaseUser);
-  }
-
-  setIsAuthLoading(false);
-});
     return () => subscription.unsubscribe();
   }, []);
 
@@ -145,6 +100,8 @@ export const useDocumentsWithAuth = () => {
       typeInfo.category = 'professional';
     } else if (type === 'health_card' || type === 'vaccine_card') {
       typeInfo.category = 'health';
+    } else if (type === 'contract') {
+      typeInfo.category = 'contracts';
     }
 
     try {
@@ -157,7 +114,7 @@ export const useDocumentsWithAuth = () => {
       );
 
       setDocuments(prev => [newDoc, ...prev]);
-      showToast('Documento adicionado com sucesso!', 'success');
+      showToast('Documento salvo com segurança!', 'success');
 
       return newDoc;
     } catch (error) {
@@ -217,9 +174,6 @@ export const useDocumentsWithAuth = () => {
 
   const handleLogout = async () => {
     try {
-      localStorage.removeItem('docwallet_nexa_user');
-      localStorage.removeItem('docwallet_nexa_token');
-
       await signOut();
 
       setUser(null);
