@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Copy, Mail, MessageCircle, Check, Loader2 } from 'lucide-react';
+import { X, Copy, Mail, MessageCircle, Check, Loader2, AlertCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Document } from '../types/document';
 import { getWhatsAppShareUrl, getEmailSubject, getEmailBody } from '../utils/helpers';
@@ -14,26 +14,34 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
   const [copied, setCopied] = useState(false);
   const [shareUrl, setShareUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // CORREÇÃO: Gerar link temporário seguro ao abrir o modal
   useEffect(() => {
     const createSecureLink = async () => {
+      setIsLoading(true);
+      setErrorMessage('');
+
       try {
-        // Gerar link temporário com expiração de 7 dias
         const secureLink = await generateShareLink(document.id);
         setShareUrl(secureLink);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erro ao criar link seguro:', error);
-        // Fallback: link direto com ID do documento (menos seguro)
-        setShareUrl(`${window.location.origin}/share/${document.id}`);
+        setShareUrl('');
+        setErrorMessage(
+          error?.message ||
+          'Não foi possível gerar o link seguro. Verifique se o usuário está autenticado e se o Supabase está configurado.'
+        );
       } finally {
         setIsLoading(false);
       }
     };
+
     createSecureLink();
   }, [document.id]);
 
   const handleCopyLink = async () => {
+    if (!shareUrl) return;
+
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
@@ -44,12 +52,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
   };
 
   const handleWhatsApp = () => {
+    if (!shareUrl) return;
     window.open(getWhatsAppShareUrl(document.name, shareUrl), '_blank');
   };
 
   const handleEmail = () => {
+    if (!shareUrl) return;
     window.location.href = `mailto:?subject=${getEmailSubject(document.name)}&body=${getEmailBody(document.name, shareUrl)}`;
   };
+
+  const hasShareUrl = Boolean(shareUrl && !isLoading && !errorMessage);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -70,6 +82,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
                 <Loader2 className="text-primary animate-spin mb-2" size={32} />
                 <p className="text-slate-500 text-sm">Gerando link seguro...</p>
               </div>
+            ) : errorMessage ? (
+              <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex gap-3">
+                <AlertCircle className="text-red-500 flex-shrink-0" size={24} />
+                <div>
+                  <p className="font-semibold text-red-700 text-sm">Compartilhamento indisponível</p>
+                  <p className="text-red-600 text-sm mt-1">{errorMessage}</p>
+                </div>
+              </div>
             ) : (
               <div className="bg-white p-4 rounded-xl shadow-card">
                 <QRCodeSVG
@@ -83,6 +103,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
             <p className="text-slate-500 text-sm mt-4 text-center">
               {isLoading ? (
                 'Aguarde...'
+              ) : errorMessage ? (
+                'O link direto inseguro foi bloqueado.'
               ) : (
                 <>
                   Link temporário válido por 7 dias<br />
@@ -95,9 +117,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
           <div className="flex flex-col gap-3">
             <button
               onClick={handleCopyLink}
-              disabled={isLoading}
+              disabled={!hasShareUrl}
               className={`flex items-center gap-3 w-full p-4 rounded-xl transition-colors ${
-                isLoading
+                !hasShareUrl
                   ? 'bg-slate-50 cursor-not-allowed opacity-50'
                   : 'bg-slate-50 hover:bg-slate-100'
               }`}
@@ -105,17 +127,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
               <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
                 {copied ? <Check className="text-secondary" size={20} /> : <Copy className="text-slate-600" size={20} />}
               </div>
-              <div className="text-left">
+              <div className="text-left min-w-0">
                 <p className="font-medium text-slate-800">{copied ? 'Copiado!' : 'Copiar link'}</p>
-                <p className="text-sm text-slate-500 truncate">{copied ? 'Link na área de transferência' : shareUrl || 'Gerando...'}</p>
+                <p className="text-sm text-slate-500 truncate">{copied ? 'Link na área de transferência' : shareUrl || 'Aguardando link seguro...'}</p>
               </div>
             </button>
 
             <button
               onClick={handleWhatsApp}
-              disabled={isLoading}
+              disabled={!hasShareUrl}
               className={`flex items-center gap-3 w-full p-4 rounded-xl transition-colors ${
-                isLoading
+                !hasShareUrl
                   ? 'bg-green-50 cursor-not-allowed opacity-50'
                   : 'bg-green-50 hover:bg-green-100'
               }`}
@@ -131,9 +153,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
 
             <button
               onClick={handleEmail}
-              disabled={isLoading}
+              disabled={!hasShareUrl}
               className={`flex items-center gap-3 w-full p-4 rounded-xl transition-colors ${
-                isLoading
+                !hasShareUrl
                   ? 'bg-blue-50 cursor-not-allowed opacity-50'
                   : 'bg-blue-50 hover:bg-blue-100'
               }`}
