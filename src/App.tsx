@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';  
+import { useState } from 'react';
 import { useDocumentsWithAuth } from './hooks/useDocumentsWithAuth';
 import { DocumentType } from './types/document';
 import { Document } from './types/document';
@@ -16,11 +16,9 @@ import { DocumentViewerModal } from './components/DocumentViewerModal';
 import { AuthModal } from './components/AuthModal';
 import { BannerBlockchain } from './components/BannerBlockchain';
 import { BlockchainPage } from './components/BlockchainPage';
-import { LogOut, UserCircle, Shield, FileSignature, FileKey } from 'lucide-react';
+import { UserCircle, Shield, FileSignature, FileKey } from 'lucide-react';
 import { DIDWallet } from './components/DIDWallet';
 import { ShareModal } from './components/ShareModal';
-
-const NEXA_API_URL = 'https://nexa-backend-p2u0.onrender.com/api/v1';
 
 function App() {
   const {
@@ -46,39 +44,6 @@ function App() {
   const [showBlockchainModal, setShowBlockchainModal] = useState(false);
   const [showDIDWallet, setShowDIDWallet] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  // Simulated credits - in production this would come from backend
-  const [userCredits, setUserCredits] = useState(5);
-
-  useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const nexaToken = params.get('nexaToken');
-
-  if (nexaToken) {
-    loginWithNexaToken(nexaToken);
-  }
-}, []);
-
-const loginWithNexaToken = async (nexaToken: string) => {
-  try {
-    const response = await fetch(`${NEXA_API_URL}/nexa-id/validate/${nexaToken}`);
-    const data = await response.json();
-
-    if (!data.success || !data.user) {
-      alert('Token Nexa ID inválido ou expirado');
-      return;
-    }
-
-    localStorage.setItem('docwallet_nexa_user', JSON.stringify(data.user));
-localStorage.setItem('docwallet_nexa_token', nexaToken);
-
-window.history.replaceState({}, document.title, window.location.pathname);
-setShowAuthModal(false);
-
-alert('Login com Nexa ID realizado com sucesso. Reabra o DocWallet ou atualize a página se necessário.');
-  } catch (err) {
-    alert('Erro ao entrar com Nexa ID');
-  }
-};
 
   const handleAddClick = () => {
     if (!user) {
@@ -139,16 +104,15 @@ alert('Login com Nexa ID realizado com sucesso. Reabra o DocWallet ou atualize a
 
       {!user ? (
         <div className="max-w-6xl mx-auto px-4 py-8">
-          {/* Welcome Section */}
           <div className="flex flex-col items-center justify-center py-12 px-4">
             <div className="w-24 h-24 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center mb-6 shadow-lg">
               <UserCircle className="text-white" size={48} />
             </div>
             <h3 className="text-2xl font-bold text-slate-800 mb-3">
-              DocWallet by Nexa
+              DocWallet
             </h3>
             <p className="text-slate-500 text-center max-w-md mb-8">
-              Seus documentos importantes, organizados, protegidos e prontos para compartilhar dentro do ecossistema Nexa. Faça login ou cadastre-se para começar a organizar seus documentos de forma segura.
+              Sua carteira digital para guardar documentos, validar arquivos em blockchain, criar contratos e compartilhar com segurança.
             </p>
             <button
               onClick={() => setShowAuthModal(true)}
@@ -158,7 +122,6 @@ alert('Login com Nexa ID realizado com sucesso. Reabra o DocWallet ou atualize a
             </button>
           </div>
 
-          {/* Blockchain Banner for non-logged users */}
           <BannerBlockchain onLearnMore={() => setShowAuthModal(true)} />
         </div>
       ) : (
@@ -168,7 +131,6 @@ alert('Login com Nexa ID realizado com sucesso. Reabra o DocWallet ou atualize a
             onAddClick={handleAddClick}
           />
 
-          {/* Blockchain Quick Access Section */}
           <div className="max-w-6xl mx-auto px-4 mb-6">
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6">
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -177,8 +139,8 @@ alert('Login com Nexa ID realizado com sucesso. Reabra o DocWallet ou atualize a
                     <Shield className="text-white" size={28} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">DocWallet Blockchain</h3>
-                    <p className="text-white/80 text-sm">{userCredits} créditos disponíveis</p>
+                    <h3 className="text-lg font-bold text-white">Validação Blockchain</h3>
+                    <p className="text-white/80 text-sm">Conecte sua carteira, pague em cripto e registre o hash do documento on-chain.</p>
                   </div>
                 </div>
 
@@ -188,7 +150,7 @@ alert('Login com Nexa ID realizado com sucesso. Reabra o DocWallet ou atualize a
                     className="px-5 py-3 bg-white text-indigo-600 rounded-xl font-semibold text-sm hover:bg-white/90 transition-colors flex items-center gap-2 shadow-lg"
                   >
                     <Shield size={18} />
-                    Autenticar Documento
+                    Validar Documento
                   </button>
                   <button
                     onClick={() => setShowBlockchainModal(true)}
@@ -202,7 +164,7 @@ alert('Login com Nexa ID realizado com sucesso. Reabra o DocWallet ou atualize a
                     className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
                   >
                     <FileKey size={18} />
-                    Nexa ID Beta
+                    Identidade Digital Beta
                   </button>
                 </div>
               </div>
@@ -256,8 +218,6 @@ alert('Login com Nexa ID realizado com sucesso. Reabra o DocWallet ou atualize a
       <BlockchainPage
         isOpen={showBlockchainModal}
         onClose={() => setShowBlockchainModal(false)}
-        userCredits={userCredits}
-        onCreditsChange={setUserCredits}
       />
 
       <DIDWallet
