@@ -140,7 +140,8 @@ export const generateShareLink = async (docId: string): Promise<string> => {
 
   // Backward compatibility: older schemas may not have created_by yet.
   if (error && payload.created_by && error.message?.toLowerCase().includes('created_by')) {
-    const { created_by, ...fallbackPayload } = payload;
+    const fallbackPayload = { ...payload };
+    delete fallbackPayload.created_by;
 
     const retry = await supabase
       .from('shared_documents')
