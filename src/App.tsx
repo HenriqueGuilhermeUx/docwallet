@@ -22,6 +22,7 @@ import { ShareModal } from './components/ShareModal';
 import { PublicDoc } from './components/PublicDoc';
 import { ProductHome } from './components/ProductHome';
 import { CertificatePage } from './components/CertificatePage';
+import { SignPage } from './components/SignPage';
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
@@ -30,6 +31,10 @@ function App() {
 
   if (window.location.pathname.startsWith('/cert/')) {
     return <CertificatePage />;
+  }
+
+  if (window.location.pathname.startsWith('/sign/')) {
+    return <SignPage />;
   }
 
   const {
