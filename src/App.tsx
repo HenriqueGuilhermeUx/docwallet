@@ -19,8 +19,13 @@ import { BlockchainPage } from './components/BlockchainPage';
 import { UserCircle, Shield, FileSignature, FileKey } from 'lucide-react';
 import { DIDWallet } from './components/DIDWallet';
 import { ShareModal } from './components/ShareModal';
+import { PublicDoc } from './components/PublicDoc';
 
 function App() {
+  if (window.location.pathname.startsWith('/share/')) {
+    return <PublicDoc />;
+  }
+
   const {
     user,
     documents,
