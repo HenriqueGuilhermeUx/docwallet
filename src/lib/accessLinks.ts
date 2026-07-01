@@ -43,5 +43,5 @@ export const createAccessLink = async (documentId: string): Promise<AccessLink> 
 };
 
 export const accessLinkUrl = (item: AccessLink): string => {
-  return `${requireApiUrl()}${item.file_url}`;
+  return '/share/' + item.code;
 };
