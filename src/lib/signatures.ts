@@ -58,6 +58,17 @@ export const createSignatureRequest = async (params: {
   return data.request as SignatureRequest;
 };
 
+export const readSignatureRequest = async (requestId: string): Promise<{ request: SignatureRequest; contract_content: string }> => {
+  const response = await fetch(`${requireApiUrl()}/api/signatures/${requestId}`, {
+    headers: headers(),
+  });
+  const data = await response.json();
+  if (!response.ok || data.success === false) {
+    throw new Error(data.error || 'Erro ao carregar assinatura.');
+  }
+  return { request: data.request as SignatureRequest, contract_content: data.contract_content };
+};
+
 export const readPublicSignature = async (code: string) => {
   const response = await fetch(`${requireApiUrl()}/api/sign/${code}`);
   const data = await response.json();
