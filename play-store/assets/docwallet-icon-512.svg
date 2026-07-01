@@ -1,0 +1,24 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="48" y1="32" x2="464" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4F46E5"/>
+      <stop offset="0.55" stop-color="#312E81"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="card" x1="132" y1="108" x2="380" y2="408" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E0E7FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="116" y="142" width="280" height="230" rx="36" fill="#111827" fill-opacity="0.28"/>
+  <rect x="104" y="126" width="276" height="222" rx="34" fill="url(#card)"/>
+  <rect x="152" y="174" width="142" height="18" rx="9" fill="#4F46E5" fill-opacity="0.8"/>
+  <rect x="152" y="214" width="190" height="16" rx="8" fill="#64748B" fill-opacity="0.45"/>
+  <rect x="152" y="250" width="170" height="16" rx="8" fill="#64748B" fill-opacity="0.35"/>
+  <path d="M332 198H402C420.778 198 436 213.222 436 232V314C436 332.778 420.778 348 402 348H332C313.222 348 298 332.778 298 314V232C298 213.222 313.222 198 332 198Z" fill="#818CF8"/>
+  <circle cx="366" cy="273" r="30" fill="#FFFFFF"/>
+  <path d="M354 273L363 282L381 262" stroke="#4F46E5" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M178 356C178 331.7 197.7 312 222 312H290C314.3 312 334 331.7 334 356V374H178V356Z" fill="#4F46E5"/>
+  <text x="256" y="401" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="800" fill="#FFFFFF">DW</text>
+</svg>
