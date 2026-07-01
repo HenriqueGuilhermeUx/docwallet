@@ -15,10 +15,15 @@ import {
   X,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { supabase } from '../lib/supabase';
 import { sha256File, sha256Text } from '../lib/hash';
 import { connectWallet, getTargetChain, notarizeHashOnChain, WalletConnection } from '../lib/evmWallet';
-import { fetchUserNotarizations, NotarizationRecord, saveNotarization, verifyHash } from '../lib/notarizations';
+import {
+  BackendCertificate,
+  confirmBackendCertificate,
+  listBackendCertificates,
+  verifyBackendHash,
+} from '../lib/backendBlockchain';
+import { readSession } from '../lib/backendSession';
 
 interface BlockchainPageProps {
   isOpen: boolean;
@@ -61,11 +66,11 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
   const [fileHash, setFileHash] = useState<string>('');
   const [isHashing, setIsHashing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [result, setResult] = useState<NotarizationRecord | null>(null);
+  const [result, setResult] = useState<BackendCertificate | null>(null);
   const [verifyFile, setVerifyFile] = useState<File | null>(null);
-  const [verifyResult, setVerifyResult] = useState<NotarizationRecord | null>(null);
+  const [verifyResult, setVerifyResult] = useState<BackendCertificate | null>(null);
   const [verifyMessage, setVerifyMessage] = useState<string>('');
-  const [history, setHistory] = useState<NotarizationRecord[]>([]);
+  const [history, setHistory] = useState<BackendCertificate[]>([]);
   const [error, setError] = useState<string>('');
   const [contractType, setContractType] = useState<ContractType>('prestacao_servicos');
   const [partyA, setPartyA] = useState('');
@@ -77,10 +82,9 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
   const price = import.meta.env.VITE_DOCWALLET_NOTARIZATION_PRICE_NATIVE || '0.01';
 
   const loadHistory = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!readSession()) return;
 
-    const records = await fetchUserNotarizations(user.id);
+    const records = await listBackendCertificates();
     setHistory(records);
   };
 
@@ -123,16 +127,14 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
     setIsSubmitting(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Faça login antes de validar um documento em blockchain.');
+      if (!readSession()) throw new Error('Faça login antes de validar um documento em blockchain.');
 
       const receipt = await notarizeHashOnChain(fileHash);
-      const record = await saveNotarization({
-        userId: user.id,
-        documentId: null,
-        documentName: selectedFile.name,
+      const record = await confirmBackendCertificate({
         fileHash,
-        receipt,
+        documentName: selectedFile.name,
+        txHash: receipt.txHash,
+        walletAddress: receipt.walletAddress,
       });
 
       setResult(record);
@@ -153,7 +155,7 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
 
     try {
       const hash = await sha256File(file);
-      const record = await verifyHash(hash);
+      const record = await verifyBackendHash(hash);
 
       if (record) {
         setVerifyResult(record);
@@ -185,19 +187,17 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
     setIsSubmitting(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Faça login antes de validar um contrato em blockchain.');
+      if (!readSession()) throw new Error('Faça login antes de validar um contrato em blockchain.');
       if (!contractContent) throw new Error('Gere o contrato antes de registrar em blockchain.');
 
       const hash = await sha256Text(contractContent);
       const receipt = await notarizeHashOnChain(hash);
       const selected = CONTRACT_TYPES.find((item) => item.id === contractType);
-      const record = await saveNotarization({
-        userId: user.id,
-        documentId: null,
-        documentName: selected?.name || 'Contrato DocWallet',
+      const record = await confirmBackendCertificate({
         fileHash: hash,
-        receipt,
+        documentName: selected?.name || 'Contrato DocWallet',
+        txHash: receipt.txHash,
+        walletAddress: receipt.walletAddress,
       });
 
       setResult(record);
@@ -239,7 +239,7 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-white">DocWallet Blockchain</h2>
-                  <p className="text-white/80 text-sm">Validação real via carteira EVM + hash SHA-256</p>
+                  <p className="text-white/80 text-sm">Validação real via carteira EVM + backend Render</p>
                 </div>
               </div>
               <button onClick={onClose} className="text-white/80 hover:text-white p-2">
