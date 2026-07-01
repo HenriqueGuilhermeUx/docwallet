@@ -15,7 +15,7 @@ on:
 
 jobs:
   android:
-    name: Build APK and unsigned AAB
+    name: Build APK and AAB
     runs-on: ubuntu-latest
 
     steps:
@@ -62,14 +62,44 @@ jobs:
       - name: Build release bundle unsigned
         run: cd android && ./gradlew bundleRelease
 
+      - name: Sign release AAB when secrets exist
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "No keystore secret found. Skipping signed AAB."
+            exit 0
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > docwallet-release.jks
+          AAB=$(ls android/app/build/outputs/bundle/release/*.aab | head -n 1)
+          cp "$AAB" docwallet-release-unsigned.aab
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore docwallet-release.jks \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -keypass "$ANDROID_KEY_PASSWORD" \
+            -signedjar docwallet-release-signed.aab \
+            docwallet-release-unsigned.aab \
+            "$ANDROID_KEY_ALIAS"
+          jarsigner -verify -verbose -certs docwallet-release-signed.aab
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: docwallet-android-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
 
-      - name: Upload AAB artifact
+      - name: Upload unsigned AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: docwallet-android-release-aab-unsigned
           path: android/app/build/outputs/bundle/release/*.aab
+
+      - name: Upload signed AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docwallet-android-release-aab-signed
+          path: docwallet-release-signed.aab
+          if-no-files-found: ignore
