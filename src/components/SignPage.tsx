@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle, FileSignature, Loader2, Shield, Wallet } from 'lucide-react';
+import { AlertCircle, CheckCircle, Copy, FileSignature, Loader2, Send, Shield, Wallet } from 'lucide-react';
 import { acceptSignature, readPublicSignature } from '../lib/signatures';
+
+type NextParty = {
+  name: string;
+  email?: string;
+  url: string;
+  code: string;
+};
 
 type PublicData = {
   request: {
@@ -12,10 +19,12 @@ type PublicData = {
   };
   party: { name: string; email?: string; status: string };
   contract_content: string;
+  next_party?: NextParty | null;
 };
 
 export const SignPage: React.FC = () => {
   const [data, setData] = useState<PublicData | null>(null);
+  const [nextParty, setNextParty] = useState<NextParty | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [accepted, setAccepted] = useState(false);
@@ -23,6 +32,7 @@ export const SignPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const code = useMemo(() => {
     const parts = window.location.pathname.split('/').filter(Boolean);
@@ -49,15 +59,30 @@ export const SignPage: React.FC = () => {
     setError('');
     setSubmitting(true);
     try {
-      await acceptSignature(code, { name, email });
+      const signed = await acceptSignature(code, { name, email });
       setSuccess(true);
-      const loaded = await readPublicSignature(code);
-      setData(loaded);
+      setData(signed);
+      setNextParty(signed.next_party || null);
     } catch (err: any) {
       setError(err?.message || 'Erro ao assinar.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const nextPartyUrl = nextParty ? `${window.location.origin}${nextParty.url}` : '';
+
+  const copyNextLink = async () => {
+    if (!nextPartyUrl) return;
+    await navigator.clipboard.writeText(nextPartyUrl).catch(() => undefined);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const sendByWhatsApp = () => {
+    if (!nextPartyUrl || !nextParty) return;
+    const text = encodeURIComponent(`Olá, ${nextParty.name}. Você recebeu um contrato para assinar eletronicamente no DocWallet: ${nextPartyUrl}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
   if (loading) {
@@ -126,9 +151,33 @@ export const SignPage: React.FC = () => {
           </div>
 
           {alreadySigned ? (
-            <div className="mt-6 rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-800 flex gap-3">
-              <CheckCircle size={22} />
-              <div><p className="font-bold">Assinatura registrada</p><p className="text-sm">Sua evidência foi salva com data, IP, navegador e hash do contrato.</p></div>
+            <div className="mt-6 space-y-4">
+              <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-800 flex gap-3">
+                <CheckCircle size={22} />
+                <div><p className="font-bold">Assinatura registrada</p><p className="text-sm">Sua evidência foi salva com data, IP, navegador e hash do contrato.</p></div>
+              </div>
+
+              {nextParty && (
+                <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-4 text-indigo-900">
+                  <p className="font-bold">Enviar para próxima parte</p>
+                  <p className="text-sm mt-1">Agora envie o link para {nextParty.name} assinar.</p>
+                  <input value={nextPartyUrl} readOnly className="mt-3 w-full px-3 py-2 rounded-lg border border-indigo-100 text-xs text-slate-700" />
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <button onClick={copyNextLink} className="py-2 bg-slate-900 text-white rounded-lg font-semibold text-sm flex items-center justify-center gap-2">
+                      <Copy size={16} /> {copied ? 'Copiado' : 'Copiar'}
+                    </button>
+                    <button onClick={sendByWhatsApp} className="py-2 bg-emerald-600 text-white rounded-lg font-semibold text-sm flex items-center justify-center gap-2">
+                      <Send size={16} /> WhatsApp
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!nextParty && completed && (
+                <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 text-slate-700 text-sm">
+                  Todas as partes assinaram. O contrato está completo e já possui hash final assinado.
+                </div>
+              )}
             </div>
           ) : (
             <div className="mt-6 space-y-3">
