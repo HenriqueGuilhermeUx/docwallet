@@ -9,12 +9,17 @@ const requestHeaders = () => {
   return { [key]: `Bearer ${readSession() || ''}` } as Record<string, string>;
 };
 
+const downloadUrl = (documentId: string) => {
+  const session = encodeURIComponent(readSession() || '');
+  return `${api()}/api/documents/${documentId}/download?s=${session}`;
+};
+
 const toDocument = (item: any): Document => ({
   id: item.id,
   name: item.name,
   type: item.type || 'other',
   category: item.category || 'other',
-  fileData: `${api()}${item.download_url}`,
+  fileData: downloadUrl(item.id),
   fileType: item.file_type || 'application/octet-stream',
   createdAt: item.created_at,
   filePath: item.download_url,
@@ -76,5 +81,5 @@ export const deleteBackendDocument = async (documentId: string): Promise<void> =
 };
 
 export const backendShareLink = (documentId: string): string => {
-  return `${api()}/api/documents/${documentId}/download`;
+  return downloadUrl(documentId);
 };
