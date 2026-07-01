@@ -21,10 +21,15 @@ import { DIDWallet } from './components/DIDWallet';
 import { ShareModal } from './components/ShareModal';
 import { PublicDoc } from './components/PublicDoc';
 import { ProductHome } from './components/ProductHome';
+import { CertificatePage } from './components/CertificatePage';
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
     return <PublicDoc />;
+  }
+
+  if (window.location.pathname.startsWith('/cert/')) {
+    return <CertificatePage />;
   }
 
   const {
