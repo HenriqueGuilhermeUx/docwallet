@@ -43,5 +43,6 @@ export const createAccessLink = async (documentId: string): Promise<AccessLink> 
 };
 
 export const accessLinkUrl = (item: AccessLink): string => {
-  return '/share/' + item.code;
+  const base = globalThis.location?.origin || '';
+  return base + '/share/' + item.code;
 };
