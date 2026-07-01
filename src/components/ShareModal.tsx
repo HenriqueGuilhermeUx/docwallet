@@ -3,7 +3,7 @@ import { X, Copy, Mail, MessageCircle, Check, Loader2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Document } from '../types/document';
 import { getWhatsAppShareUrl, getEmailSubject, getEmailBody } from '../utils/helpers';
-import { generateShareLink } from '../lib/documents';
+import { backendShareLink } from '../lib/backendDocuments';
 
 interface ShareModalProps {
   document: Document;
@@ -15,16 +15,13 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
   const [shareUrl, setShareUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // CORREÇÃO: Gerar link temporário seguro ao abrir o modal
   useEffect(() => {
     const createSecureLink = async () => {
       try {
-        // Gerar link temporário com expiração de 7 dias
-        const secureLink = await generateShareLink(document.id);
+        const secureLink = backendShareLink(document.id);
         setShareUrl(secureLink);
       } catch (error) {
-        console.error('Erro ao criar link seguro:', error);
-        // Fallback: link direto com ID do documento (menos seguro)
+        console.error('Erro ao criar link:', error);
         setShareUrl(`${window.location.origin}/share/${document.id}`);
       } finally {
         setIsLoading(false);
@@ -68,7 +65,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
             {isLoading ? (
               <div className="bg-slate-50 p-8 rounded-xl flex flex-col items-center">
                 <Loader2 className="text-primary animate-spin mb-2" size={32} />
-                <p className="text-slate-500 text-sm">Gerando link seguro...</p>
+                <p className="text-slate-500 text-sm">Gerando link...</p>
               </div>
             ) : (
               <div className="bg-white p-4 rounded-xl shadow-card">
@@ -85,7 +82,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
                 'Aguarde...'
               ) : (
                 <>
-                  Link temporário válido por 7 dias<br />
+                  Link de download autenticado pelo backend<br />
                   <span className="font-mono text-xs text-slate-400">{document.name}</span>
                 </>
               )}
