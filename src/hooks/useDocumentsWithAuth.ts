@@ -1,14 +1,12 @@
-import { User } from '@supabase/supabase-js';
-import { Document } from '../types/document';
-import { supabase, signOut, onAuthStateChange } from '../lib/supabase';
-import {
-  uploadDocument as uploadDocToSupabase,
-  fetchDocuments as fetchDocsFromSupabase,
-  deleteDocument as deleteDocFromSupabase,
-  generateShareLink,
-} from '../lib/documents';
-import { DocumentType, Category } from '../types/document';
+import { Document, DocumentType, Category } from '../types/document';
 import { useState, useEffect, useCallback } from 'react';
+import { BackendUser, readProfile, readSession, clearSession } from '../lib/backendSession';
+import {
+  listBackendDocuments,
+  uploadBackendDocument,
+  deleteBackendDocument,
+  backendShareLink,
+} from '../lib/backendDocuments';
 
 interface Toast {
   id: string;
@@ -21,7 +19,7 @@ const generateId = (): string => {
 };
 
 export const useDocumentsWithAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<BackendUser | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,20 +28,16 @@ export const useDocumentsWithAuth = () => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    const loadAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setIsAuthLoading(false);
-    };
+    const savedUser = readProfile();
+    const savedSession = readSession();
 
-    loadAuth();
+    if (savedUser && savedSession) {
+      setUser(savedUser);
+    } else {
+      setUser(null);
+    }
 
-    const { data: { subscription } } = onAuthStateChange((supabaseUser) => {
-      setUser(supabaseUser);
-      setIsAuthLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    setIsAuthLoading(false);
   }, []);
 
   useEffect(() => {
@@ -64,7 +58,7 @@ export const useDocumentsWithAuth = () => {
     setIsLoading(true);
 
     try {
-      const docs = await fetchDocsFromSupabase(user.id);
+      const docs = await listBackendDocuments();
       setDocuments(docs);
     } catch (error) {
       console.error('Error loading documents:', error);
@@ -105,8 +99,7 @@ export const useDocumentsWithAuth = () => {
     }
 
     try {
-      const newDoc = await uploadDocToSupabase(
-        user.id,
+      const newDoc = await uploadBackendDocument(
         file,
         name,
         type,
@@ -114,7 +107,7 @@ export const useDocumentsWithAuth = () => {
       );
 
       setDocuments(prev => [newDoc, ...prev]);
-      showToast('Documento salvo com segurança!', 'success');
+      showToast('Documento salvo no backend DocWallet!', 'success');
 
       return newDoc;
     } catch (error) {
@@ -129,9 +122,7 @@ export const useDocumentsWithAuth = () => {
     if (!user) return;
 
     try {
-      const filePath = doc.filePath || `${user.id}/${doc.id}`;
-
-      await deleteDocFromSupabase(doc.id, filePath);
+      await deleteBackendDocument(doc.id);
 
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
       showToast('Documento excluído', 'info');
@@ -160,7 +151,7 @@ export const useDocumentsWithAuth = () => {
 
   const createShareLink = async (docId: string): Promise<string> => {
     try {
-      const link = await generateShareLink(docId);
+      const link = backendShareLink(docId);
       showToast('Link de compartilhamento criado!', 'success');
 
       return link;
@@ -174,8 +165,7 @@ export const useDocumentsWithAuth = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut();
-
+      clearSession();
       setUser(null);
       setDocuments([]);
       showToast('Você foi desconectado', 'info');
