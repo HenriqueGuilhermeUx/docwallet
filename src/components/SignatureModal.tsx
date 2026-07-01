@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Copy, FileSignature, Loader2, Send, X } from 'lucide-react';
-import { createSignatureRequest, publicSignUrl, SignatureRequest } from '../lib/signatures';
+import { CheckCircle, Copy, ExternalLink, FileSignature, Loader2, RefreshCw, Send, Shield, X } from 'lucide-react';
+import { createSignatureRequest, publicSignUrl, readSignatureRequest, SignatureRequest } from '../lib/signatures';
+import { notarizeHashOnChain } from '../lib/evmWallet';
+import { confirmBackendCertificate, BackendCertificate } from '../lib/backendBlockchain';
 
 interface SignatureModalProps {
   isOpen: boolean;
@@ -15,7 +17,10 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose 
   const [partyB, setPartyB] = useState('');
   const [emailB, setEmailB] = useState('');
   const [request, setRequest] = useState<SignatureRequest | null>(null);
+  const [certificate, setCertificate] = useState<BackendCertificate | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [registering, setRegistering] = useState(false);
   const [error, setError] = useState('');
 
   const handleCreate = async () => {
@@ -31,6 +36,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose 
         ].filter((item) => item.name.trim()),
       });
       setRequest(created);
+      setCertificate(null);
     } catch (err: any) {
       setError(err?.message || 'Erro ao criar solicitação.');
     } finally {
@@ -38,9 +44,46 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose 
     }
   };
 
+  const handleRefresh = async () => {
+    if (!request) return;
+    setError('');
+    setRefreshing(true);
+    try {
+      const loaded = await readSignatureRequest(request.id);
+      setRequest(loaded.request);
+      setContent(loaded.contract_content);
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao atualizar status.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleRegisterFinalHash = async () => {
+    if (!request?.final_hash) return;
+    setError('');
+    setRegistering(true);
+    try {
+      const receipt = await notarizeHashOnChain(request.final_hash);
+      const record = await confirmBackendCertificate({
+        fileHash: request.final_hash,
+        documentName: `${request.title} — contrato assinado`,
+        txHash: receipt.txHash,
+        walletAddress: receipt.walletAddress,
+      });
+      setCertificate(record);
+    } catch (err: any) {
+      setError(err?.shortMessage || err?.message || 'Erro ao registrar hash final em blockchain.');
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   const copy = (value: string) => navigator.clipboard.writeText(value).catch(() => undefined);
 
   if (!isOpen) return null;
+
+  const completed = request?.status === 'completed' && !!request.final_hash;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm overflow-y-auto">
@@ -88,24 +131,46 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose 
                   <p>2. Envie o link da Parte A.</p>
                   <p>3. Depois envie o link da Parte B.</p>
                   <p>4. Quando todos assinarem, o DocWallet gera o hash final assinado.</p>
-                  <p>5. Aí você pode validar esse hash final em blockchain.</p>
+                  <p>5. Aí você registra esse hash final em blockchain.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-slate-500">Status</p>
-                    <p className="font-bold text-slate-800">{request.status}</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-slate-500">Status</p>
+                      <p className="font-bold text-slate-800">{request.status}</p>
+                    </div>
+                    <button onClick={handleRefresh} disabled={refreshing} className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 flex items-center gap-2 text-sm disabled:opacity-50">
+                      {refreshing ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}
+                      Atualizar
+                    </button>
                   </div>
+
                   <div className="rounded-xl bg-white border border-slate-200 p-3">
                     <p className="text-xs text-slate-500 mb-1">Hash original</p>
                     <p className="text-xs font-mono break-all text-slate-700">{request.content_hash}</p>
                   </div>
+
+                  {request.final_hash && (
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
+                      <p className="text-xs text-emerald-700 mb-1">Hash final assinado</p>
+                      <p className="text-xs font-mono break-all text-emerald-800">{request.final_hash}</p>
+                    </div>
+                  )}
+
                   {request.parties.map((party) => {
                     const url = publicSignUrl(party.code || '');
                     return (
                       <div key={party.id} className="bg-white border border-slate-200 rounded-xl p-4">
-                        <p className="font-semibold text-slate-800">{party.name}</p>
-                        <p className="text-sm text-slate-500">{party.email}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="font-semibold text-slate-800">{party.name}</p>
+                            <p className="text-sm text-slate-500">{party.email}</p>
+                          </div>
+                          <span className={party.status === 'signed' ? 'text-emerald-600 text-sm font-semibold' : 'text-amber-600 text-sm font-semibold'}>
+                            {party.status === 'signed' ? 'assinado' : 'pendente'}
+                          </span>
+                        </div>
                         <div className="mt-3 flex gap-2">
                           <input value={url} readOnly className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-xs" />
                           <button onClick={() => copy(url)} className="px-3 py-2 rounded-lg bg-slate-900 text-white"><Copy size={16} /></button>
@@ -113,6 +178,24 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose 
                       </div>
                     );
                   })}
+
+                  {completed && !certificate && (
+                    <button onClick={handleRegisterFinalHash} disabled={registering} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+                      {registering ? <Loader2 className="animate-spin" size={18} /> : <Shield size={18} />}
+                      Registrar hash final em blockchain
+                    </button>
+                  )}
+
+                  {certificate && (
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-800">
+                      <div className="flex items-center gap-2 font-bold mb-2"><CheckCircle size={18} /> Certificado final registrado</div>
+                      <p className="text-xs break-all">{certificate.certificate_id}</p>
+                      <div className="flex flex-wrap gap-3 mt-3 text-sm font-semibold">
+                        <a href={`/cert/${certificate.certificate_id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-emerald-700">Ver certificado <ExternalLink size={14} /></a>
+                        {certificate.explorer_url && <a href={certificate.explorer_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-indigo-700">Explorer <ExternalLink size={14} /></a>}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
