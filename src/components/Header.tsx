@@ -17,7 +17,7 @@ import {
   File,
   LogOut
 } from 'lucide-react';
-import { User as SupabaseUser } from '@supabase/supabase-js';
+import { BackendUser } from '../lib/backendSession';
 
 const iconMap: Record<string, React.FC<{ className?: string }>> = {
   'id-card': CreditCard,
@@ -49,7 +49,7 @@ export const DocumentTypeIcon: React.FC<DocumentTypeIconProps> = ({
 
 interface HeaderProps {
   onAddClick: () => void;
-  user?: SupabaseUser | null;
+  user?: BackendUser | null;
   onLogout?: () => void;
 }
 
@@ -64,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({ onAddClick, user, onLogout }) =>
             </div>
             <div>
               <h1 className="text-xl font-bold text-slate-800">DocWallet</h1>
-              <p className="text-xs text-slate-500">by Nexa</p>
+              <p className="text-xs text-slate-500">standalone</p>
             </div>
           </div>
 
