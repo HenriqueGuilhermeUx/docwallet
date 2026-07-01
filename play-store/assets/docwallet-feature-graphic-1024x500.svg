@@ -1,0 +1,53 @@
+<svg width="1024" height="500" viewBox="0 0 1024 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="0.5" stop-color="#312E81"/>
+      <stop offset="1" stop-color="#4F46E5"/>
+    </linearGradient>
+    <linearGradient id="phone" x1="628" y1="52" x2="864" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E0E7FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="500" fill="url(#bg)"/>
+  <circle cx="874" cy="70" r="210" fill="#818CF8" fill-opacity="0.18"/>
+  <circle cx="116" cy="414" r="180" fill="#22C55E" fill-opacity="0.12"/>
+
+  <g transform="translate(72 92)">
+    <rect width="74" height="74" rx="20" fill="#4F46E5"/>
+    <path d="M22 25H49C56.1797 25 62 30.8203 62 38V51C62 58.1797 56.1797 64 49 64H22C14.8203 64 9 58.1797 9 51V38C9 30.8203 14.8203 25 22 25Z" fill="white" fill-opacity="0.9"/>
+    <path d="M22 17H45V25H22V17Z" fill="white" fill-opacity="0.65"/>
+  </g>
+
+  <text x="72" y="218" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="800" fill="#FFFFFF">DocWallet</text>
+  <text x="72" y="274" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="600" fill="#C7D2FE">Documentos, contratos e assinatura eletrônica</text>
+  <text x="72" y="318" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="600" fill="#C7D2FE">com prova de integridade em blockchain</text>
+
+  <g transform="translate(72 362)">
+    <rect width="166" height="46" rx="23" fill="#FFFFFF" fill-opacity="0.16"/>
+    <text x="83" y="30" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">Documentos</text>
+    <rect x="184" width="154" height="46" rx="23" fill="#FFFFFF" fill-opacity="0.16"/>
+    <text x="261" y="30" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">Contratos</text>
+    <rect x="356" width="154" height="46" rx="23" fill="#FFFFFF" fill-opacity="0.16"/>
+    <text x="433" y="30" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">Blockchain</text>
+  </g>
+
+  <g transform="translate(640 42)">
+    <rect x="0" y="0" width="250" height="420" rx="44" fill="#020617" fill-opacity="0.55"/>
+    <rect x="16" y="18" width="218" height="384" rx="32" fill="url(#phone)"/>
+    <rect x="84" y="34" width="66" height="8" rx="4" fill="#CBD5E1"/>
+    <text x="46" y="82" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="800" fill="#0F172A">DocWallet</text>
+    <rect x="36" y="108" width="178" height="64" rx="18" fill="#EEF2FF"/>
+    <text x="54" y="136" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#312E81">Contrato assinado</text>
+    <text x="54" y="158" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#64748B">Hash final pronto</text>
+    <rect x="36" y="190" width="178" height="48" rx="14" fill="#F8FAFC"/>
+    <circle cx="60" cy="214" r="12" fill="#22C55E"/>
+    <text x="84" y="219" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#0F172A">Parte A assinou</text>
+    <rect x="36" y="250" width="178" height="48" rx="14" fill="#F8FAFC"/>
+    <circle cx="60" cy="274" r="12" fill="#22C55E"/>
+    <text x="84" y="279" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#0F172A">Parte B assinou</text>
+    <rect x="36" y="322" width="178" height="46" rx="23" fill="#4F46E5"/>
+    <text x="125" y="351" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">Ver certificado</text>
+  </g>
+</svg>
