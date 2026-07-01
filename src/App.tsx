@@ -24,6 +24,7 @@ import { ProductHome } from './components/ProductHome';
 import { CertificatePage } from './components/CertificatePage';
 import { SignPage } from './components/SignPage';
 import { SignatureModal } from './components/SignatureModal';
+import { PrivacyPage, TermsPage } from './components/LegalPage';
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
@@ -36,6 +37,14 @@ function App() {
 
   if (window.location.pathname.startsWith('/sign/')) {
     return <SignPage />;
+  }
+
+  if (window.location.pathname === '/privacy') {
+    return <PrivacyPage />;
+  }
+
+  if (window.location.pathname === '/terms') {
+    return <TermsPage />;
   }
 
   const {
@@ -218,6 +227,12 @@ function App() {
           <FloatingActionButton onClick={handleAddClick} />
         </>
       )}
+
+      <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-slate-400 flex flex-wrap items-center justify-center gap-3">
+        <span>DocWallet © 2026</span>
+        <a href="/privacy" className="hover:text-slate-600">Política de Privacidade</a>
+        <a href="/terms" className="hover:text-slate-600">Termos de Uso</a>
+      </footer>
 
       {showAddModal && user && (
         <AddDocumentModal
