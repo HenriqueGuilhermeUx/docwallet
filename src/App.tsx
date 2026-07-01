@@ -20,6 +20,7 @@ import { UserCircle, Shield, FileSignature, FileKey } from 'lucide-react';
 import { DIDWallet } from './components/DIDWallet';
 import { ShareModal } from './components/ShareModal';
 import { PublicDoc } from './components/PublicDoc';
+import { ProductHome } from './components/ProductHome';
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
@@ -108,27 +109,30 @@ function App() {
       />
 
       {!user ? (
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <div className="flex flex-col items-center justify-center py-12 px-4">
-            <div className="w-24 h-24 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center mb-6 shadow-lg">
-              <UserCircle className="text-white" size={48} />
+        <>
+          <div className="max-w-6xl mx-auto px-4 py-8">
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <div className="w-24 h-24 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center mb-6 shadow-lg">
+                <UserCircle className="text-white" size={48} />
+              </div>
+              <h3 className="text-3xl font-bold text-slate-800 mb-3">
+                DocWallet
+              </h3>
+              <p className="text-slate-500 text-center max-w-2xl mb-8 text-lg">
+                Carteira digital para guardar documentos, criar contratos simples, compartilhar com segurança e registrar provas de autenticidade em blockchain.
+              </p>
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="px-8 py-3 bg-primary hover:bg-primary-dark text-white rounded-full font-semibold transition-colors shadow-lg"
+              >
+                Entrar ou Cadastrar
+              </button>
             </div>
-            <h3 className="text-2xl font-bold text-slate-800 mb-3">
-              DocWallet
-            </h3>
-            <p className="text-slate-500 text-center max-w-md mb-8">
-              Sua carteira digital para guardar documentos, validar arquivos em blockchain, criar contratos e compartilhar com segurança.
-            </p>
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="px-8 py-3 bg-primary hover:bg-primary-dark text-white rounded-full font-semibold transition-colors shadow-lg"
-            >
-              Entrar ou Cadastrar
-            </button>
-          </div>
 
-          <BannerBlockchain onLearnMore={() => setShowAuthModal(true)} />
-        </div>
+            <BannerBlockchain onLearnMore={() => setShowAuthModal(true)} />
+          </div>
+          <ProductHome onStart={() => setShowAuthModal(true)} />
+        </>
       ) : (
         <>
           <Hero
@@ -145,7 +149,7 @@ function App() {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white">Validação Blockchain</h3>
-                    <p className="text-white/80 text-sm">Conecte sua carteira, pague em cripto e registre o hash do documento on-chain.</p>
+                    <p className="text-white/80 text-sm">Pague avulso por documento ou contrato. Escolha carteira cripto ou Pix quando disponível.</p>
                   </div>
                 </div>
 
