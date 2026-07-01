@@ -1,5 +1,39 @@
 import { supabase } from './supabase';
 import { Document, DocumentType, Category } from '../types/document';
+import { sha256File } from './hash';
+
+const SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+const createReadableUrl = async (filePath: string, fallbackUrl?: string): Promise<string> => {
+  const { data, error } = await supabase.storage
+    .from('documents')
+    .createSignedUrl(filePath, SIGNED_URL_TTL_SECONDS);
+
+  if (!error && data?.signedUrl) {
+    return data.signedUrl;
+  }
+
+  return fallbackUrl || '';
+};
+
+const toDocument = async (doc: any): Promise<Document> => {
+  const fileUrl = await createReadableUrl(doc.file_path, doc.file_url);
+
+  return {
+    id: doc.id,
+    name: doc.name,
+    type: doc.type,
+    category: doc.category,
+    fileData: fileUrl,
+    fileType: doc.file_type,
+    createdAt: doc.created_at,
+    filePath: doc.file_path,
+    fileSize: doc.file_size,
+    fileHash: doc.file_hash,
+    isNotarized: Boolean(doc.is_notarized),
+    certificateId: doc.certificate_id,
+  };
+};
 
 export const uploadDocument = async (
   userId: string,
@@ -11,8 +45,9 @@ export const uploadDocument = async (
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
   const filePath = `${userId}/${fileName}`;
+  const fileHash = await sha256File(file);
 
-  const { data: uploadData, error: uploadError } = await supabase.storage
+  const { error: uploadError } = await supabase.storage
     .from('documents')
     .upload(filePath, file, {
       cacheControl: '3600',
@@ -25,9 +60,27 @@ export const uploadDocument = async (
     .from('documents')
     .getPublicUrl(filePath);
 
-  const { data: docData, error: docError } = await supabase
+  const payload = {
+    user_id: userId,
+    name,
+    type,
+    category,
+    file_url: publicUrl,
+    file_path: filePath,
+    file_type: file.type,
+    file_size: file.size,
+    file_hash: fileHash,
+  };
+
+  let { data: docData, error: docError } = await supabase
     .from('documents')
-    .insert({
+    .insert(payload)
+    .select()
+    .single();
+
+  // Backward compatibility for projects that have not run the new SQL migration yet.
+  if (docError && docError.message?.toLowerCase().includes('file_hash')) {
+    const legacyPayload = {
       user_id: userId,
       name,
       type,
@@ -36,21 +89,21 @@ export const uploadDocument = async (
       file_path: filePath,
       file_type: file.type,
       file_size: file.size,
-    })
-    .select()
-    .single();
+    };
+
+    const retry = await supabase
+      .from('documents')
+      .insert(legacyPayload)
+      .select()
+      .single();
+
+    docData = retry.data;
+    docError = retry.error;
+  }
 
   if (docError) throw docError;
 
-  return {
-    id: docData.id,
-    name: docData.name,
-    type: docData.type,
-    category: docData.category,
-    fileData: publicUrl,
-    fileType: file.type as any,
-    createdAt: docData.created_at,
-  };
+  return toDocument({ ...docData, file_hash: docData.file_hash || fileHash });
 };
 
 export const fetchDocuments = async (userId: string): Promise<Document[]> => {
@@ -62,16 +115,7 @@ export const fetchDocuments = async (userId: string): Promise<Document[]> => {
 
   if (error) throw error;
 
-  return data.map((doc: any) => ({
-    id: doc.id,
-    name: doc.name,
-    type: doc.type,
-    category: doc.category,
-    fileData: doc.file_url,
-    fileType: doc.file_type,
-    createdAt: doc.created_at,
-    filePath: doc.file_path, // incluir para deleção correta
-  }));
+  return Promise.all((data ?? []).map(toDocument));
 };
 
 export const deleteDocument = async (docId: string, filePath: string): Promise<void> => {
@@ -89,8 +133,23 @@ export const deleteDocument = async (docId: string, filePath: string): Promise<v
   if (dbError) throw dbError;
 };
 
+export const markDocumentAsNotarized = async (
+  docId: string,
+  certificateId: string
+): Promise<void> => {
+  const { error } = await supabase
+    .from('documents')
+    .update({
+      is_notarized: true,
+      certificate_id: certificateId,
+      notarized_at: new Date().toISOString(),
+    })
+    .eq('id', docId);
+
+  if (error) throw error;
+};
+
 export const generateShareLink = async (docId: string): Promise<string> => {
-  // Obter usuário logado para incluir created_by
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Usuário não autenticado');
 
@@ -98,7 +157,7 @@ export const generateShareLink = async (docId: string): Promise<string> => {
     .from('shared_documents')
     .insert({
       document_id: docId,
-      created_by: user.id, // Campo obrigatório no novo schema
+      created_by: user.id,
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     })
     .select()
@@ -110,12 +169,10 @@ export const generateShareLink = async (docId: string): Promise<string> => {
 };
 
 export const getSharedDocument = async (shareId: string) => {
-  // Usar função segura que valida expiração e revogação
   const { data, error } = await supabase
     .rpc('get_shared_document_safe', { p_share_id: shareId });
 
   if (error) {
-    // Se a função não existir, fallback para lógica original
     const { data: fallbackData, error: fallbackError } = await supabase
       .from('shared_documents')
       .select(`
@@ -131,8 +188,12 @@ export const getSharedDocument = async (shareId: string) => {
       throw new Error('Link inválido, expirado ou revogado');
     }
 
-    return fallbackData.documents;
+    const sharedDoc = fallbackData.documents;
+    return {
+      ...sharedDoc,
+      file_url: await createReadableUrl(sharedDoc.file_path, sharedDoc.file_url),
+    };
   }
 
-  return data;
+  return Array.isArray(data) ? data[0] : data;
 };

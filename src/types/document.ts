@@ -7,6 +7,7 @@ export type DocumentType =
   | 'professional_license'
   | 'health_card'
   | 'vaccine_card'
+  | 'contract'
   | 'other';
 
 export type Category =
@@ -14,6 +15,7 @@ export type Category =
   | 'registrations'
   | 'professional'
   | 'health'
+  | 'contracts'
   | 'other';
 
 export interface Document {
@@ -22,10 +24,14 @@ export interface Document {
   type: DocumentType;
   category: Category;
   fileData: string;
-  fileType: 'image/jpeg' | 'image/png' | 'application/pdf';
+  fileType: string;
   createdAt: string;
   thumbnail?: string;
-  filePath?: string; // caminho no storage para deleção correta
+  filePath?: string;
+  fileSize?: number;
+  fileHash?: string;
+  isNotarized?: boolean;
+  certificateId?: string;
 }
 
 export interface DocumentTypeInfo {
@@ -45,15 +51,17 @@ export const DOCUMENT_TYPES: DocumentTypeInfo[] = [
   { type: 'professional_license', label: 'Professional License', labelPt: 'Carteira Profissional', icon: 'briefcase', category: 'professional' },
   { type: 'health_card', label: 'Health Card', labelPt: 'Carteira de Saúde', icon: 'heart', category: 'health' },
   { type: 'vaccine_card', label: 'Vaccine Card', labelPt: 'Carteira de Vacinação', icon: 'syringe', category: 'health' },
+  { type: 'contract', label: 'Contract', labelPt: 'Contrato', icon: 'file-text', category: 'contracts' },
   { type: 'other', label: 'Other', labelPt: 'Outro', icon: 'file', category: 'other' },
 ];
 
-export const CATEGORIES: { key: Category; label: string; labelPt: string }[] = [
+export const CATEGORIES: { key: Category | 'all'; label: string; labelPt: string }[] = [
   { key: 'all', label: 'All', labelPt: 'Todos' },
   { key: 'ids', label: 'IDs', labelPt: 'Documentos de ID' },
   { key: 'registrations', label: 'Registrations', labelPt: 'Cadastros' },
   { key: 'professional', label: 'Professional', labelPt: 'Profissionais' },
   { key: 'health', label: 'Health', labelPt: 'Saúde' },
+  { key: 'contracts', label: 'Contracts', labelPt: 'Contratos' },
   { key: 'other', label: 'Other', labelPt: 'Outros' },
 ];
 
