@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { loginWithBackend, registerWithBackend } from '../lib/backendLogin';
+import { EcosystemButton } from './EcosystemButton';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -83,8 +84,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <ShieldCheck className="text-blue-600 mt-0.5" size={20} />
             <div>
               <p className="font-medium text-slate-800 text-sm">Login pelo backend próprio</p>
-              <p className="text-slate-500 text-sm">Conta e documentos agora ficam no backend DocWallet hospedado no Render.</p>
+              <p className="text-slate-500 text-sm">Conta e documentos ficam no backend DocWallet. Clientes integrados também podem entrar pelo ecossistema.</p>
             </div>
+          </div>
+
+          <EcosystemButton />
+
+          <div className="flex items-center gap-4">
+            <div className="flex-1 h-px bg-slate-200"></div>
+            <span className="text-slate-400 text-sm">ou</span>
+            <div className="flex-1 h-px bg-slate-200"></div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
