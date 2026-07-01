@@ -23,6 +23,7 @@ import { PublicDoc } from './components/PublicDoc';
 import { ProductHome } from './components/ProductHome';
 import { CertificatePage } from './components/CertificatePage';
 import { SignPage } from './components/SignPage';
+import { SignatureModal } from './components/SignatureModal';
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
@@ -60,6 +61,7 @@ function App() {
   const [showBlockchainModal, setShowBlockchainModal] = useState(false);
   const [showDIDWallet, setShowDIDWallet] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
 
   const handleAddClick = () => {
     if (!user) {
@@ -179,6 +181,13 @@ function App() {
                     Criar Contrato
                   </button>
                   <button
+                    onClick={() => setShowSignatureModal(true)}
+                    className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
+                  >
+                    <FileSignature size={18} />
+                    Enviar para Assinatura
+                  </button>
+                  <button
                     onClick={() => setShowDIDWallet(true)}
                     className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
                   >
@@ -242,6 +251,11 @@ function App() {
       <DIDWallet
         isOpen={showDIDWallet}
         onClose={() => setShowDIDWallet(false)}
+      />
+
+      <SignatureModal
+        isOpen={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
       />
 
       {showShareModal && selectedDocument && (
