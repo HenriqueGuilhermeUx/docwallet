@@ -3,7 +3,7 @@ import { X, Copy, Mail, MessageCircle, Check, Loader2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Document } from '../types/document';
 import { getWhatsAppShareUrl, getEmailSubject, getEmailBody } from '../utils/helpers';
-import { backendShareLink } from '../lib/backendDocuments';
+import { accessLinkUrl, createAccessLink } from '../lib/accessLinks';
 
 interface ShareModalProps {
   document: Document;
@@ -16,18 +16,18 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const createSecureLink = async () => {
+    const createLink = async () => {
       try {
-        const secureLink = backendShareLink(document.id);
-        setShareUrl(secureLink);
+        const link = await createAccessLink(document.id);
+        setShareUrl(accessLinkUrl(link));
       } catch (error) {
         console.error('Erro ao criar link:', error);
-        setShareUrl(`${window.location.origin}/share/${document.id}`);
+        setShareUrl('');
       } finally {
         setIsLoading(false);
       }
     };
-    createSecureLink();
+    createLink();
   }, [document.id]);
 
   const handleCopyLink = async () => {
@@ -67,7 +67,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
                 <Loader2 className="text-primary animate-spin mb-2" size={32} />
                 <p className="text-slate-500 text-sm">Gerando link...</p>
               </div>
-            ) : (
+            ) : shareUrl ? (
               <div className="bg-white p-4 rounded-xl shadow-card">
                 <QRCodeSVG
                   value={shareUrl}
@@ -76,15 +76,21 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
                   includeMargin={true}
                 />
               </div>
+            ) : (
+              <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm text-center">
+                Não foi possível gerar o link.
+              </div>
             )}
             <p className="text-slate-500 text-sm mt-4 text-center">
               {isLoading ? (
                 'Aguarde...'
-              ) : (
+              ) : shareUrl ? (
                 <>
-                  Link de download autenticado pelo backend<br />
+                  Link válido por 7 dias ou até 25 acessos<br />
                   <span className="font-mono text-xs text-slate-400">{document.name}</span>
                 </>
+              ) : (
+                'Tente novamente em instantes.'
               )}
             </p>
           </div>
@@ -92,9 +98,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
           <div className="flex flex-col gap-3">
             <button
               onClick={handleCopyLink}
-              disabled={isLoading}
+              disabled={isLoading || !shareUrl}
               className={`flex items-center gap-3 w-full p-4 rounded-xl transition-colors ${
-                isLoading
+                isLoading || !shareUrl
                   ? 'bg-slate-50 cursor-not-allowed opacity-50'
                   : 'bg-slate-50 hover:bg-slate-100'
               }`}
@@ -110,9 +116,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
 
             <button
               onClick={handleWhatsApp}
-              disabled={isLoading}
+              disabled={isLoading || !shareUrl}
               className={`flex items-center gap-3 w-full p-4 rounded-xl transition-colors ${
-                isLoading
+                isLoading || !shareUrl
                   ? 'bg-green-50 cursor-not-allowed opacity-50'
                   : 'bg-green-50 hover:bg-green-100'
               }`}
@@ -128,9 +134,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ document, onClose }) => 
 
             <button
               onClick={handleEmail}
-              disabled={isLoading}
+              disabled={isLoading || !shareUrl}
               className={`flex items-center gap-3 w-full p-4 rounded-xl transition-colors ${
-                isLoading
+                isLoading || !shareUrl
                   ? 'bg-blue-50 cursor-not-allowed opacity-50'
                   : 'bg-blue-50 hover:bg-blue-100'
               }`}
