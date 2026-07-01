@@ -3,7 +3,6 @@ import {
   Plus,
   Search,
   User,
-  Menu,
   X,
   CreditCard,
   Car,
