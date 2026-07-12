@@ -33,6 +33,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Setup Android SDK 35
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
       - name: Install dependencies
         run: npm install
 
@@ -52,6 +58,15 @@ jobs:
 
       - name: Create Android project
         run: npx cap add android
+
+      - name: Force Android target API 35
+        run: |
+          if [ -f android/variables.gradle ]; then
+            sed -i 's/compileSdkVersion = [0-9][0-9]*/compileSdkVersion = 35/g' android/variables.gradle
+            sed -i 's/targetSdkVersion = [0-9][0-9]*/targetSdkVersion = 35/g' android/variables.gradle
+            cat android/variables.gradle
+          fi
+          grep -R "targetSdk" -n android || true
 
       - name: Sync Android
         run: npx cap sync android
