@@ -24,7 +24,7 @@ import { ProductHome } from './components/ProductHome';
 import { CertificatePage } from './components/CertificatePage';
 import { SignPage } from './components/SignPage';
 import { SignatureModal } from './components/SignatureModal';
-import { PrivacyPage, TermsPage } from './components/LegalPage';
+import { DeleteAccountPage, PrivacyPage, TermsPage } from './components/LegalPage';
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
@@ -45,6 +45,10 @@ function App() {
 
   if (window.location.pathname === '/terms') {
     return <TermsPage />;
+  }
+
+  if (window.location.pathname === '/delete-account') {
+    return <DeleteAccountPage />;
   }
 
   const {
@@ -232,6 +236,7 @@ function App() {
         <span>DocWallet © 2026</span>
         <a href="/privacy" className="hover:text-slate-600">Política de Privacidade</a>
         <a href="/terms" className="hover:text-slate-600">Termos de Uso</a>
+        <a href="/delete-account" className="hover:text-slate-600">Excluir conta e dados</a>
       </footer>
 
       {showAddModal && user && (
