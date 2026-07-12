@@ -1,6 +1,7 @@
-import { ShieldCheck, Wallet } from 'lucide-react';
+import { ShieldCheck, Trash2, Wallet } from 'lucide-react';
 
 const today = '01/07/2026';
+const supportEmail = 'suporte@docwallet.app';
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
@@ -72,10 +73,11 @@ export const PrivacyPage: React.FC = () => {
 
         <Section title="9. Retenção e exclusão">
           <p>Os dados são mantidos enquanto necessários para prestação do serviço, cumprimento de obrigações legais, auditoria, segurança e defesa de direitos. O usuário pode solicitar exclusão de dados, observadas obrigações legais e registros necessários de auditoria.</p>
+          <p>A página pública de solicitação de exclusão está disponível em <a className="text-indigo-600 font-semibold" href="/delete-account">/delete-account</a>.</p>
         </Section>
 
         <Section title="10. Contato">
-          <p>Para dúvidas, solicitações de privacidade ou exclusão de dados, entre em contato pelo canal oficial informado no site ou app DocWallet.</p>
+          <p>Para dúvidas, solicitações de privacidade ou exclusão de dados, entre em contato pelo e-mail <a className="text-indigo-600 font-semibold" href={`mailto:${supportEmail}`}>{supportEmail}</a>.</p>
         </Section>
       </main>
     </div>
@@ -148,6 +150,56 @@ export const TermsPage: React.FC = () => {
 
         <Section title="10. Alterações dos termos">
           <p>Estes termos podem ser atualizados para refletir melhorias do produto, exigências legais ou mudanças operacionais. A versão vigente estará disponível no app ou site.</p>
+        </Section>
+      </main>
+    </div>
+  );
+};
+
+export const DeleteAccountPage: React.FC = () => {
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-slate-950 text-white border-b border-white/10">
+        <div className="max-w-5xl mx-auto px-4 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-red-600 rounded-xl flex items-center justify-center"><Trash2 size={22} /></div>
+            <div>
+              <p className="font-bold text-lg">DocWallet</p>
+              <p className="text-xs text-slate-400">Exclusão de conta e dados</p>
+            </div>
+          </div>
+          <a href="/" className="text-sm text-slate-300 hover:text-white">Voltar</a>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-4 py-8 space-y-5">
+        <div className="bg-gradient-to-r from-red-600 to-slate-900 rounded-3xl p-8 text-white">
+          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-4"><Trash2 size={30} /></div>
+          <h1 className="text-3xl font-bold">Solicitação de exclusão de conta e dados</h1>
+          <p className="text-white/80 mt-2">Última atualização: {today}</p>
+        </div>
+
+        <Section title="Como solicitar a exclusão">
+          <p>Para excluir sua conta DocWallet e os dados pessoais associados, envie uma solicitação para <a className="text-indigo-600 font-semibold" href={`mailto:${supportEmail}?subject=Solicitação de exclusão de conta DocWallet`}>{supportEmail}</a>.</p>
+          <p>No e-mail, informe o endereço de e-mail usado no cadastro do DocWallet e escreva: “Solicito a exclusão da minha conta DocWallet e dos dados pessoais associados”.</p>
+        </Section>
+
+        <Section title="Quais dados podem ser excluídos">
+          <p>Após validação da titularidade da conta, poderemos excluir dados de cadastro, sessão, documentos enviados, contratos criados, links de compartilhamento ativos e outros dados pessoais associados à conta.</p>
+        </Section>
+
+        <Section title="Dados que podem ser retidos">
+          <p>Alguns registros podem ser mantidos pelo período necessário para cumprimento legal, auditoria, prevenção de fraude, segurança, comprovação de transações, defesa de direitos e registros técnicos.</p>
+          <p>Registros em blockchain, hashes, transações públicas e dados já gravados em redes descentralizadas podem não ser apagáveis por natureza técnica da blockchain.</p>
+        </Section>
+
+        <Section title="Prazo de atendimento">
+          <p>Responderemos às solicitações de exclusão em prazo razoável, após confirmação da identidade do solicitante e análise de eventuais obrigações legais ou registros que precisem ser preservados.</p>
+        </Section>
+
+        <Section title="URL pública para a Google Play">
+          <p>Esta página é a URL pública de solicitação de exclusão de conta e dados do DocWallet:</p>
+          <p className="font-mono text-slate-900 break-all bg-slate-100 rounded-xl p-3">https://docwallet.netlify.app/delete-account</p>
         </Section>
       </main>
     </div>
