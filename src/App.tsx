@@ -14,9 +14,8 @@ import { Toast } from './components/Toast';
 import { AddDocumentModal } from './components/AddDocumentModal';
 import { DocumentViewerModal } from './components/DocumentViewerModal';
 import { AuthModal } from './components/AuthModal';
-import { BannerBlockchain } from './components/BannerBlockchain';
 import { BlockchainPage } from './components/BlockchainPage';
-import { UserCircle, Shield, FileSignature, FileKey } from 'lucide-react';
+import { Shield, FileSignature, FileKey } from 'lucide-react';
 import { DIDWallet } from './components/DIDWallet';
 import { ShareModal } from './components/ShareModal';
 import { PublicDoc } from './components/PublicDoc';
@@ -25,6 +24,12 @@ import { CertificatePage } from './components/CertificatePage';
 import { SignPage } from './components/SignPage';
 import { SignatureModal } from './components/SignatureModal';
 import { DeleteAccountPage, PrivacyPage, TermsPage } from './components/LegalPage';
+import { ContractTemplatesPage } from './components/ContractTemplatesPage';
+import { FreeHashValidatorPage } from './components/FreeHashValidatorPage';
+import { CertificateLookupPage } from './components/CertificateLookupPage';
+import { BusinessPage } from './components/BusinessPage';
+import { ApiFuturePage } from './components/ApiFuturePage';
+import { CertificateHistoryPanel } from './components/CertificateHistoryPanel';
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
@@ -49,6 +54,26 @@ function App() {
 
   if (window.location.pathname === '/delete-account') {
     return <DeleteAccountPage />;
+  }
+
+  if (window.location.pathname === '/modelos') {
+    return <ContractTemplatesPage />;
+  }
+
+  if (window.location.pathname === '/validar-documento') {
+    return <FreeHashValidatorPage />;
+  }
+
+  if (window.location.pathname === '/verificar-certificado') {
+    return <CertificateLookupPage />;
+  }
+
+  if (window.location.pathname === '/empresas') {
+    return <BusinessPage />;
+  }
+
+  if (window.location.pathname === '/api') {
+    return <ApiFuturePage />;
   }
 
   const {
@@ -134,36 +159,15 @@ function App() {
       />
 
       {!user ? (
-        <>
-          <div className="max-w-6xl mx-auto px-4 py-8">
-            <div className="flex flex-col items-center justify-center py-12 px-4">
-              <div className="w-24 h-24 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center mb-6 shadow-lg">
-                <UserCircle className="text-white" size={48} />
-              </div>
-              <h3 className="text-3xl font-bold text-slate-800 mb-3">
-                DocWallet
-              </h3>
-              <p className="text-slate-500 text-center max-w-2xl mb-8 text-lg">
-                Carteira digital para guardar documentos, criar contratos simples, compartilhar com segurança e registrar provas de autenticidade em blockchain.
-              </p>
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="px-8 py-3 bg-primary hover:bg-primary-dark text-white rounded-full font-semibold transition-colors shadow-lg"
-              >
-                Entrar ou Cadastrar
-              </button>
-            </div>
-
-            <BannerBlockchain onLearnMore={() => setShowAuthModal(true)} />
-          </div>
-          <ProductHome onStart={() => setShowAuthModal(true)} />
-        </>
+        <ProductHome onStart={() => setShowAuthModal(true)} />
       ) : (
         <>
           <Hero
             documentCount={allDocuments.length}
             onAddClick={handleAddClick}
           />
+
+          <CertificateHistoryPanel />
 
           <div className="max-w-6xl mx-auto px-4 mb-6">
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6">
@@ -234,6 +238,11 @@ function App() {
 
       <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-slate-400 flex flex-wrap items-center justify-center gap-3">
         <span>DocWallet © 2026</span>
+        <a href="/modelos" className="hover:text-slate-600">Modelos</a>
+        <a href="/validar-documento" className="hover:text-slate-600">Validar grátis</a>
+        <a href="/verificar-certificado" className="hover:text-slate-600">Verificar certificado</a>
+        <a href="/empresas" className="hover:text-slate-600">Empresas</a>
+        <a href="/api" className="hover:text-slate-600">API</a>
         <a href="/privacy" className="hover:text-slate-600">Política de Privacidade</a>
         <a href="/terms" className="hover:text-slate-600">Termos de Uso</a>
         <a href="/delete-account" className="hover:text-slate-600">Excluir conta e dados</a>
