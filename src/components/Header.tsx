@@ -56,16 +56,24 @@ export const Header: React.FC<HeaderProps> = ({ onAddClick, user, onLogout }) =>
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between h-16 gap-4">
+          <a href="/" className="flex items-center gap-3 shrink-0">
             <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-xl flex items-center justify-center shadow-md">
               <Wallet className="text-white" size={22} />
             </div>
             <div>
               <h1 className="text-xl font-bold text-slate-800">DocWallet</h1>
-              <p className="text-xs text-slate-500">standalone</p>
+              <p className="text-xs text-slate-500">documentos e evidencias</p>
             </div>
-          </div>
+          </a>
+
+          <nav className="hidden lg:flex items-center gap-5 text-sm font-semibold text-slate-600">
+            <a href="/modelos" className="hover:text-primary">Modelos</a>
+            <a href="/validar-documento" className="hover:text-primary">Validar gratis</a>
+            <a href="/verificar-certificado" className="hover:text-primary">Certificado</a>
+            <a href="/empresas" className="hover:text-primary">Empresas</a>
+            <a href="/api" className="hover:text-primary">API</a>
+          </nav>
 
           <div className="flex items-center gap-3">
             <button
@@ -73,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({ onAddClick, user, onLogout }) =>
               className="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-full font-medium transition-all duration-200 hover:shadow-lg active:scale-95"
             >
               <Plus size={18} />
-              <span>Adicionar</span>
+              <span>{user ? 'Adicionar' : 'Entrar'}</span>
             </button>
 
             {user ? (
