@@ -1,4 +1,4 @@
-import { ArrowRight, BellRing, BriefcaseBusiness, CheckCircle, Code2, FileCheck, FileSignature, Mail, Rocket, Shield, Smartphone, Sparkles, Wallet } from 'lucide-react';
+import { ArrowRight, BellRing, Briefcase, CheckCircle, Code2, FileCheck, FileSignature, Mail, Rocket, Shield, Smartphone, Sparkles, Wallet } from 'lucide-react';
 import { PRODUCT_COPY } from '../lib/productCopy';
 import { CONTRACT_TEMPLATES } from '../lib/contractTemplates';
 
@@ -28,7 +28,7 @@ const features = [
 const roadmap = [
   { icon: Mail, title: 'Envio por e-mail', description: 'Convites automaticos para as partes assinarem contratos.' },
   { icon: BellRing, title: 'Lembretes de assinatura', description: 'Avisos para quem ainda nao assinou o documento.' },
-  { icon: BriefcaseBusiness, title: 'Area para empresas', description: 'Planos, historico e recursos para operacao profissional.' },
+  { icon: Briefcase, title: 'Area para empresas', description: 'Planos, historico e recursos para operacao profissional.' },
   { icon: Code2, title: 'API futura', description: 'Integracoes para documentos, certificados, assinaturas e webhooks.' },
 ];
 
@@ -169,7 +169,7 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
             <div key={template.title} className="rounded-3xl bg-slate-50 p-5 border border-slate-100">
               <p className="text-xs font-bold text-indigo-600 uppercase">{template.category}</p>
               <h3 className="text-lg font-bold text-slate-900 mt-2">{template.title}</h3>
-              <p className="text-sm text-slate-600 mt-2 line-clamp-3">{template.description}</p>
+              <p className="text-sm text-slate-600 mt-2">{template.description}</p>
             </div>
           ))}
         </div>
@@ -229,22 +229,27 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
       <section className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 lg:p-10">
         <div className="grid lg:grid-cols-[0.8fr_1.2fr] gap-8 items-start">
           <div>
-            <h2 className="text-3xl font-black text-slate-900">Casos de uso</h2>
-            <p className="text-slate-600 mt-3 leading-relaxed">Use o DocWallet quando voce precisa guardar, enviar, assinar ou comprovar que um documento existia em determinada versao.</p>
+            <h2 className="text-3xl font-black text-slate-900">Feito para documentos que precisam de controle.</h2>
+            <p className="text-slate-600 mt-3 leading-relaxed">
+              O DocWallet ajuda pessoas, autonomos e empresas a organizar provas digitais sem transformar o produto em cartorio ou consultoria juridica.
+            </p>
+            <a href="/empresas" className="mt-5 inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700">
+              Conhecer area para empresas <ArrowRight size={17} />
+            </a>
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
             {useCases.map((item) => (
-              <div key={item} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4">
+              <div key={item} className="flex items-center gap-3 bg-slate-50 rounded-2xl p-4">
                 <CheckCircle className="text-emerald-500" size={19} />
-                <span className="font-semibold text-slate-700 text-sm">{item}</span>
+                <span className="font-semibold text-slate-800 text-sm">{item}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-amber-50 border border-amber-100 rounded-[2rem] p-6 text-amber-950 leading-relaxed text-sm">
-        <strong>Aviso importante:</strong> o DocWallet nao e cartorio, nao substitui reconhecimento de firma, nao presta consultoria juridica e nao deve ser apresentado como assinatura qualificada ICP-Brasil. A plataforma registra evidencias digitais, aceite eletronico e prova tecnica de integridade por hash/blockchain.
+      <section className="bg-amber-50 border border-amber-100 rounded-[2rem] p-6 text-amber-950 text-sm leading-relaxed">
+        <strong>Aviso importante:</strong> o DocWallet nao e cartorio, nao substitui reconhecimento de firma, nao presta consultoria juridica e nao deve ser apresentado como assinatura qualificada ICP-Brasil. A plataforma registra evidencias digitais de aceite, hash, historico e prova tecnica de integridade.
       </section>
     </div>
   );
