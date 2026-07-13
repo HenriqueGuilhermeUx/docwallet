@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { Search, ShieldCheck } from 'lucide-react';
 
 export function CertificateLookupPage() {
@@ -7,7 +8,7 @@ export function CertificateLookupPage() {
   const cleanCode = code.trim();
   const canSearch = cleanCode.length > 0;
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!canSearch) return;
     window.location.href = `/cert/${encodeURIComponent(cleanCode)}`;
