@@ -68,6 +68,30 @@ export const confirmBackendCertificate = async (params: {
   return data.certificate as BackendCertificate;
 };
 
+export const registerPaidBackendCertificate = async (params: {
+  fileHash: string;
+  documentName: string;
+  paymentId: string;
+}) => {
+  const response = await fetch(`${api()}/api/blockchain/register-paid`, {
+    method: 'POST',
+    headers: requestHeaders(),
+    body: JSON.stringify({
+      file_hash: params.fileHash,
+      document_name: params.documentName,
+      payment_id: params.paymentId,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || data.success === false) {
+    throw new Error(data.error || 'Erro ao registrar certificado pago por Pix');
+  }
+
+  return data.certificate as BackendCertificate;
+};
+
 export const verifyBackendHash = async (fileHash: string): Promise<BackendCertificate | null> => {
   const response = await fetch(`${api()}/api/blockchain/verify/${fileHash}`);
   const data = await response.json();
