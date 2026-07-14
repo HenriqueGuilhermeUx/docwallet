@@ -21,11 +21,13 @@ import {
   BackendCertificate,
   confirmBackendCertificate,
   listBackendCertificates,
+  registerPaidBackendCertificate,
   verifyBackendHash,
 } from '../lib/backendBlockchain';
 import { readSession } from '../lib/backendSession';
 import { openContractPdf } from '../lib/contractExport';
 import { PRODUCT_COPY } from '../lib/productCopy';
+import { createPixPayment, getPixPaymentStatus, PixPayment, PaymentProductType } from '../lib/payments';
 
 interface BlockchainPageProps {
   isOpen: boolean;
@@ -84,6 +86,8 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
   const [contractContent, setContractContent] = useState('');
   const [contractHash, setContractHash] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('wallet');
+  const [pixPayment, setPixPayment] = useState<PixPayment | null>(null);
+  const [pixMessage, setPixMessage] = useState('');
 
   const targetChain = getTargetChain();
   const price = import.meta.env.VITE_DOCWALLET_NOTARIZATION_PRICE_NATIVE || '0.01';
@@ -113,6 +117,8 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
 
   const handleFileSelect = async (file: File) => {
     setError('');
+    setPixMessage('');
+    setPixPayment(null);
     setSelectedFile(file);
     setResult(null);
     setIsHashing(true);
@@ -127,9 +133,39 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
     }
   };
 
-  const ensureWalletPayment = () => {
-    if (paymentMethod === 'pix') {
-      throw new Error('Pix Woovi preparado para a proxima etapa de ativacao. Use carteira cripto por enquanto.');
+  const ensurePixPayment = async (productType: PaymentProductType) => {
+    if (paymentMethod !== 'pix') return null;
+    if (!readSession()) throw new Error('Faça login antes de pagar com Pix.');
+
+    let payment = pixPayment;
+    if (!payment || payment.product_type !== productType || ['expired', 'failed', 'config_required'].includes(payment.status)) {
+      payment = await createPixPayment(productType);
+      setPixPayment(payment);
+      setPixMessage('Pix criado. Pague pelo QR Code ou Pix copia e cola e clique novamente para confirmar.');
+      throw new Error('Pix criado. Pague e depois clique novamente para confirmar o pagamento.');
+    }
+
+    payment = await getPixPaymentStatus(payment.id);
+    setPixPayment(payment);
+
+    if (payment.status !== 'paid') {
+      setPixMessage('Pagamento ainda não confirmado pela Woovi. Aguarde alguns segundos e clique novamente.');
+      throw new Error('Pagamento Pix ainda não confirmado. Aguarde e tente novamente.');
+    }
+
+    setPixMessage('Pagamento confirmado. Registrando certificado DocWallet...');
+    return payment;
+  };
+
+  const handleRefreshPix = async () => {
+    if (!pixPayment) return;
+    setError('');
+    try {
+      const payment = await getPixPaymentStatus(pixPayment.id);
+      setPixPayment(payment);
+      setPixMessage(payment.status === 'paid' ? 'Pagamento confirmado.' : 'Pagamento ainda pendente.');
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao consultar pagamento Pix.');
     }
   };
 
@@ -141,7 +177,21 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
 
     try {
       if (!readSession()) throw new Error('Faça login antes de validar um documento em blockchain.');
-      ensureWalletPayment();
+
+      if (paymentMethod === 'pix') {
+        const payment = await ensurePixPayment('document');
+        if (!payment) return;
+        const record = await registerPaidBackendCertificate({
+          fileHash,
+          documentName: selectedFile.name,
+          paymentId: payment.id,
+        });
+        setResult(record);
+        setPixPayment(null);
+        setPixMessage('');
+        await loadHistory();
+        return;
+      }
 
       const receipt = await notarizeHashOnChain(fileHash);
       const record = await confirmBackendCertificate({
@@ -185,6 +235,8 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
 
   const handleGenerateContract = async () => {
     setError('');
+    setPixMessage('');
+    setPixPayment(null);
     setResult(null);
 
     if (!partyA.trim() || !partyB.trim() || !contractDescription.trim()) {
@@ -204,11 +256,26 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
     try {
       if (!readSession()) throw new Error('Faça login antes de validar um contrato em blockchain.');
       if (!contractContent) throw new Error('Gere o contrato antes de registrar em blockchain.');
-      ensureWalletPayment();
 
       const hash = contractHash || await sha256Text(contractContent);
-      const receipt = await notarizeHashOnChain(hash);
       const selected = CONTRACT_TYPES.find((item) => item.id === contractType);
+
+      if (paymentMethod === 'pix') {
+        const payment = await ensurePixPayment('contract');
+        if (!payment) return;
+        const record = await registerPaidBackendCertificate({
+          fileHash: hash,
+          documentName: selected?.name || 'Contrato DocWallet',
+          paymentId: payment.id,
+        });
+        setResult(record);
+        setPixPayment(null);
+        setPixMessage('');
+        await loadHistory();
+        return;
+      }
+
+      const receipt = await notarizeHashOnChain(hash);
       const record = await confirmBackendCertificate({
         fileHash: hash,
         documentName: selected?.name || 'Contrato DocWallet',
@@ -316,6 +383,40 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
               <button onClick={() => setPaymentMethod('pix')} className={`p-3 rounded-xl border text-sm font-semibold ${paymentMethod === 'pix' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600'}`}>Pix Woovi</button>
             </div>
 
+            {paymentMethod === 'pix' && pixPayment && (
+              <div className="mb-5 bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+                <div className="flex flex-col md:flex-row gap-5">
+                  <div className="bg-white rounded-xl p-3 w-fit">
+                    {pixPayment.qr_code_image ? (
+                      <img src={pixPayment.qr_code_image} alt="QR Code Pix" className="w-[150px] h-[150px] object-contain" />
+                    ) : pixPayment.br_code ? (
+                      <QRCodeSVG value={pixPayment.br_code} size={150} />
+                    ) : (
+                      <div className="w-[150px] h-[150px] flex items-center justify-center text-xs text-slate-500 text-center">QR Code indisponivel</div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <p className="font-bold text-emerald-800">Pix Woovi — {pixPayment.amount_label}</p>
+                      <p className="text-sm text-emerald-700">Status: {pixPayment.status}</p>
+                      {pixMessage && <p className="text-sm text-emerald-700 mt-1">{pixMessage}</p>}
+                    </div>
+                    {pixPayment.br_code && (
+                      <div className="bg-white rounded-xl border border-emerald-100 p-3">
+                        <p className="text-xs font-semibold text-slate-500 mb-1">Pix copia e cola</p>
+                        <p className="font-mono text-xs break-all text-slate-700">{pixPayment.br_code}</p>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {pixPayment.br_code && <button onClick={() => copyToClipboard(pixPayment.br_code || '')} className="px-4 py-2 rounded-lg bg-white text-emerald-700 font-semibold text-sm border border-emerald-100">Copiar Pix</button>}
+                      {pixPayment.payment_link_url && <a href={pixPayment.payment_link_url} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-white text-emerald-700 font-semibold text-sm border border-emerald-100">Abrir pagamento</a>}
+                      <button onClick={handleRefreshPix} className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold text-sm">Verificar pagamento</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'notarize' && (
               <div className="space-y-5">
                 <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-400 transition-colors cursor-pointer" onClick={() => window.document.getElementById('notarize-file')?.click()}>
@@ -360,7 +461,7 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
                   className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <Shield size={20} />}
-                  {paymentMethod === 'pix' ? `Pagar com Pix Woovi (${PRODUCT_COPY.documentPrice})` : `Pagar e registrar (${price} ${targetChain.nativeCurrency.symbol})`}
+                  {paymentMethod === 'pix' ? `Gerar/confirmar Pix (${PRODUCT_COPY.documentPrice})` : `Pagar e registrar (${price} ${targetChain.nativeCurrency.symbol})`}
                 </button>
               </div>
             )}
@@ -427,7 +528,7 @@ export const BlockchainPage: React.FC<BlockchainPageProps> = ({ isOpen, onClose 
                   <button onClick={handleGenerateContract} className="w-full py-3 bg-slate-800 text-white rounded-xl font-semibold">Gerar contrato</button>
                   <button onClick={handleNotarizeContract} disabled={!contractContent || isSubmitting} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
                     {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Shield size={18} />}
-                    {paymentMethod === 'pix' ? `Pagar Pix e registrar (${PRODUCT_COPY.contractPrice})` : 'Registrar contrato em blockchain'}
+                    {paymentMethod === 'pix' ? `Gerar/confirmar Pix (${PRODUCT_COPY.contractPrice})` : 'Registrar contrato em blockchain'}
                   </button>
                 </div>
                 <div className="bg-slate-950 text-slate-100 rounded-xl p-4 min-h-[420px] overflow-auto">
