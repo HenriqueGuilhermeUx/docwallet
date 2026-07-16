@@ -12,6 +12,7 @@
     "android:open": "npx cap open android",
     "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug",
     "android:aab": "npm run android:sync && cd android && ./gradlew bundleRelease",
+    "android:icons": "node scripts/generate-android-icons.mjs",
     "play:assets": "node scripts/generate-play-assets.mjs"
   },
   "dependencies": {
