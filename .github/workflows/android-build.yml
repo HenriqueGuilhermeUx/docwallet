@@ -8,6 +8,8 @@ on:
     paths:
       - 'src/**'
       - 'public/**'
+      - 'scripts/**'
+      - 'play-store/assets/**'
       - 'package.json'
       - 'package-lock.json'
       - 'capacitor.config.ts'
@@ -80,6 +82,9 @@ jobs:
 
       - name: Sync Android
         run: npx cap sync android
+
+      - name: Apply DocWallet launcher icon
+        run: npm run android:icons
 
       - name: Build debug APK
         run: cd android && ./gradlew assembleDebug
