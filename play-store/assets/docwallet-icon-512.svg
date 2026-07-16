@@ -1,24 +1,35 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="48" y1="32" x2="464" y2="480" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4F46E5"/>
-      <stop offset="0.55" stop-color="#312E81"/>
-      <stop offset="1" stop-color="#0F172A"/>
-    </linearGradient>
-    <linearGradient id="card" x1="132" y1="108" x2="380" y2="408" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bg" x1="76" y1="36" x2="444" y2="492" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#E0E7FF"/>
+      <stop offset="1" stop-color="#F3F4F8"/>
     </linearGradient>
+    <linearGradient id="mark" x1="126" y1="352" x2="390" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#64C8F8"/>
+      <stop offset="1" stop-color="#37A6F4"/>
+    </linearGradient>
+    <filter id="shadow" x="84" y="94" width="352" height="344" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#38A9F5" flood-opacity="0.28"/>
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#111827" flood-opacity="0.14"/>
+    </filter>
+    <clipPath id="clip">
+      <rect x="20" y="20" width="472" height="472" rx="102"/>
+    </clipPath>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <rect x="116" y="142" width="280" height="230" rx="36" fill="#111827" fill-opacity="0.28"/>
-  <rect x="104" y="126" width="276" height="222" rx="34" fill="url(#card)"/>
-  <rect x="152" y="174" width="142" height="18" rx="9" fill="#4F46E5" fill-opacity="0.8"/>
-  <rect x="152" y="214" width="190" height="16" rx="8" fill="#64748B" fill-opacity="0.45"/>
-  <rect x="152" y="250" width="170" height="16" rx="8" fill="#64748B" fill-opacity="0.35"/>
-  <path d="M332 198H402C420.778 198 436 213.222 436 232V314C436 332.778 420.778 348 402 348H332C313.222 348 298 332.778 298 314V232C298 213.222 313.222 198 332 198Z" fill="#818CF8"/>
-  <circle cx="366" cy="273" r="30" fill="#FFFFFF"/>
-  <path d="M354 273L363 282L381 262" stroke="#4F46E5" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M178 356C178 331.7 197.7 312 222 312H290C314.3 312 334 331.7 334 356V374H178V356Z" fill="#4F46E5"/>
-  <text x="256" y="401" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="800" fill="#FFFFFF">DW</text>
+
+  <rect x="20" y="20" width="472" height="472" rx="102" fill="url(#bg)"/>
+  <g clip-path="url(#clip)" opacity="0.46" stroke="#C8CDD6" stroke-width="2">
+    <path d="M-90 106L406 602"/><path d="M-18 34L478 530"/><path d="M54 -38L550 458"/><path d="M126 -110L622 386"/>
+    <path d="M602 106L106 602"/><path d="M530 34L34 530"/><path d="M458 -38L-38 458"/><path d="M386 -110L-110 386"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <path d="M136 282L190 228L286 324L232 378L136 282Z" fill="url(#mark)"/>
+    <path d="M190 228L244 174L340 270L286 324L190 228Z" fill="url(#mark)"/>
+    <path d="M246 136L300 82L430 212L376 266L246 136Z" fill="url(#mark)"/>
+    <path d="M300 190L354 136L430 212L376 266L300 190Z" fill="url(#mark)"/>
+  </g>
+
+  <rect x="20" y="20" width="472" height="472" rx="102" stroke="#FFFFFF" stroke-width="5" opacity="0.95"/>
+  <rect x="20" y="20" width="472" height="472" rx="102" stroke="#DDE1E9" stroke-width="2" opacity="0.7"/>
 </svg>
