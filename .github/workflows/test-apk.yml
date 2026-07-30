@@ -1,0 +1,87 @@
+name: Build Test APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-apk:
+    name: Build installable APK for testing
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK 35
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build web app
+        env:
+          VITE_DOCWALLET_API_URL: https://docwallet-backend.onrender.com
+          VITE_DOCWALLET_CHAIN_ID: 137
+          VITE_DOCWALLET_NETWORK_NAME: Polygon
+          VITE_DOCWALLET_RPC_URL: https://polygon-rpc.com
+          VITE_DOCWALLET_EXPLORER_URL: https://polygonscan.com/tx
+          VITE_DOCWALLET_NATIVE_NAME: POL
+          VITE_DOCWALLET_NATIVE_SYMBOL: POL
+          VITE_DOCWALLET_NATIVE_DECIMALS: 18
+          VITE_DOCWALLET_NOTARIZATION_PRICE_NATIVE: 0.01
+          VITE_DOCWALLET_TREASURY_ADDRESS: ${{ secrets.VITE_DOCWALLET_TREASURY_ADDRESS }}
+        run: npm run build
+
+      - name: Create Android project
+        run: npx cap add android
+
+      - name: Force Android target API 35
+        run: |
+          if [ -f android/variables.gradle ]; then
+            sed -i 's/compileSdkVersion = [0-9][0-9]*/compileSdkVersion = 35/g' android/variables.gradle
+            sed -i 's/targetSdkVersion = [0-9][0-9]*/targetSdkVersion = 35/g' android/variables.gradle
+            cat android/variables.gradle
+          fi
+
+      - name: Force test version
+        run: |
+          APP_GRADLE="android/app/build.gradle"
+          VERSION_CODE=${{ github.run_number }}
+          VERSION_NAME="test-${{ github.run_number }}"
+          sed -i "s/versionCode [0-9][0-9]*/versionCode $VERSION_CODE/g" "$APP_GRADLE"
+          sed -i "s/versionName \"[^\"]*\"/versionName \"$VERSION_NAME\"/g" "$APP_GRADLE"
+          grep -n "versionCode\|versionName" "$APP_GRADLE"
+
+      - name: Sync Android
+        run: npx cap sync android
+
+      - name: Apply DocWallet launcher icon
+        run: npm run android:icons
+
+      - name: Build debug APK
+        run: cd android && ./gradlew assembleDebug
+
+      - name: Rename APK
+        run: |
+          mkdir -p output
+          cp android/app/build/outputs/apk/debug/*.apk output/docwallet-test.apk
+
+      - name: Upload test APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docwallet-test-apk
+          path: output/docwallet-test.apk
