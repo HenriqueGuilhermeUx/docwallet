@@ -6,10 +6,28 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
 body {
+  margin: 0;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: #f8fafc;
+}
+
+html.capacitor-native body {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #f8fafc;
+}
+
+html.capacitor-native #root {
+  min-height: calc(100vh - env(safe-area-inset-top, 0px));
 }
 
 ::-webkit-scrollbar {
