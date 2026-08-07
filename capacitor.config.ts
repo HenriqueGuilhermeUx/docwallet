@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'br.com.docwallet.app',
-  appName: 'DocWallet',
+  appId: 'br.com.alternativeventures.docwalletdocs',
+  appName: 'DocWallet Docs',
   webDir: 'dist',
   bundledWebRuntime: false,
   server: {
