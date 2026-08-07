@@ -83,7 +83,7 @@ jobs:
       - name: Sync Android
         run: npx cap sync android
 
-      - name: Apply DocWallet launcher icon
+      - name: Apply DocWallet Docs launcher icon
         run: npm run android:icons
 
       - name: Build debug APK
@@ -105,31 +105,31 @@ jobs:
           fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > docwallet-release.jks
           AAB=$(ls android/app/build/outputs/bundle/release/*.aab | head -n 1)
-          cp "$AAB" docwallet-release-unsigned.aab
+          cp "$AAB" docwallet-docs-release-unsigned.aab
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
             -keystore docwallet-release.jks \
             -storepass "$ANDROID_KEYSTORE_PASSWORD" \
             -keypass "$ANDROID_KEY_PASSWORD" \
-            -signedjar docwallet-release-signed.aab \
-            docwallet-release-unsigned.aab \
+            -signedjar docwallet-docs-release-signed.aab \
+            docwallet-docs-release-unsigned.aab \
             "$ANDROID_KEY_ALIAS"
-          jarsigner -verify -verbose -certs docwallet-release-signed.aab
+          jarsigner -verify -verbose -certs docwallet-docs-release-signed.aab
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: docwallet-android-debug-apk
+          name: docwallet-docs-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
 
       - name: Upload unsigned AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: docwallet-android-release-aab-unsigned
+          name: docwallet-docs-release-aab-unsigned
           path: android/app/build/outputs/bundle/release/*.aab
 
       - name: Upload signed AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: docwallet-android-release-aab-signed
-          path: docwallet-release-signed.aab
+          name: docwallet-docs-release-aab-signed
+          path: docwallet-docs-release-signed.aab
           if-no-files-found: ignore
