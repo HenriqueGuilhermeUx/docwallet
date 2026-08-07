@@ -29,6 +29,8 @@ export interface BlockchainReceipt {
   timestamp: string;
 }
 
+const walletUnavailableMessage = 'Carteira cripto disponível apenas em navegador Web3, como MetaMask ou Rabby. No app Android, use os recursos de documentos, contratos, validação gratuita por hash e Pix quando disponível.';
+
 const getRequiredTreasuryAddress = (): string => {
   const configured = import.meta.env.VITE_DOCWALLET_TREASURY_ADDRESS;
 
@@ -64,7 +66,7 @@ export const getTargetChain = () => {
 
 const getBrowserProvider = (): BrowserProvider => {
   if (!window.ethereum) {
-    throw new Error('Carteira cripto não encontrada. Instale MetaMask, Rabby ou abra em um navegador com carteira Web3.');
+    throw new Error(walletUnavailableMessage);
   }
 
   return new BrowserProvider(window.ethereum as any);
@@ -92,7 +94,7 @@ export const connectWallet = async (): Promise<WalletConnection> => {
 
 export const ensureTargetChain = async (): Promise<void> => {
   if (!window.ethereum) {
-    throw new Error('Carteira cripto não encontrada.');
+    throw new Error(walletUnavailableMessage);
   }
 
   const target = getTargetChain();
