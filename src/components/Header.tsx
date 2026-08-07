@@ -65,7 +65,7 @@ export const Header: React.FC<HeaderProps> = ({ onAddClick, user, onLogout }) =>
               <Wallet className="text-white" size={22} />
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-slate-800 truncate">DocWallet</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-slate-800 truncate">DocWallet Docs</h1>
               <p className="text-xs text-slate-500 truncate">documentos e evidencias</p>
             </div>
           </a>
