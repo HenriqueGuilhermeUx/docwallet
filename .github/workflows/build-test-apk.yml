@@ -35,6 +35,7 @@ jobs:
       - name: Build web app
         env:
           VITE_DOCWALLET_API_URL: https://docwallet-backend.onrender.com
+          VITE_DOCWALLET_PUBLIC_URL: https://docwallet.netlify.app
           VITE_DOCWALLET_CHAIN_ID: 137
           VITE_DOCWALLET_NETWORK_NAME: Polygon
           VITE_DOCWALLET_RPC_URL: https://polygon-rpc.com
