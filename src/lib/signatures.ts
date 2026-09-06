@@ -61,6 +61,18 @@ const headers = () => {
   } as Record<string, string>;
 };
 
+export const getPublicAppUrl = () => {
+  const configured = String(import.meta.env.VITE_DOCWALLET_PUBLIC_URL || '').trim().replace(/\/$/, '');
+  if (configured) return configured;
+
+  const origin = globalThis.location?.origin || '';
+  if (origin && !origin.includes('localhost') && !origin.startsWith('capacitor://') && !origin.startsWith('ionic://')) {
+    return origin.replace(/\/$/, '');
+  }
+
+  return 'https://docwallet.netlify.app';
+};
+
 export const listSignatureRequests = async (): Promise<SignatureRequest[]> => {
   const response = await fetch(`${requireApiUrl()}/api/signatures`, {
     headers: headers(),
@@ -165,10 +177,10 @@ export const acceptSignature = async (code: string, params: { name: string; emai
   return data;
 };
 
-export const publicSignUrl = (code: string) => `${globalThis.location?.origin || ''}/sign/${code}`;
+export const publicSignUrl = (code: string) => `${getPublicAppUrl()}/sign/${code}`;
 
 export const publicSignPathToUrl = (path: string) => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
-  return `${globalThis.location?.origin || ''}${path.startsWith('/') ? path : `/${path}`}`;
+  return `${getPublicAppUrl()}${path.startsWith('/') ? path : `/${path}`}`;
 };
