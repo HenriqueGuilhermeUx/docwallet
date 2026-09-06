@@ -3,7 +3,7 @@
   "package": "br.com.alternativeventures.docwalletdocs",
   "releaseChannel": "play-production-candidate",
   "androidTargetApi": 36,
-  "versionCodeBase": 200000,
-  "requestedAt": "2026-09-06T20:10:00-03:00",
-  "notes": "Trigger final AAB build after Play rejected target API 35 and versionCode 100055 conflict. Upload only the new signed AAB to a clean release."
+  "versionCodeBase": 2090000000,
+  "requestedAt": "2026-09-06T20:12:00-03:00",
+  "notes": "Trigger final AAB build with high unique versionCode after Play reported 200059 already used. Upload only this new signed AAB to a clean release."
 }
