@@ -27,7 +27,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android API 36
-        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Install dependencies
         run: npm install
@@ -50,17 +50,26 @@ jobs:
       - name: Create Android project
         run: npx cap add android
 
-      - name: Force Android target API 36
+      - name: Sync Android
+        run: npx cap sync android
+
+      - name: Force Android API 36 after sync
         run: |
           if [ -f android/variables.gradle ]; then
             sed -i 's/compileSdkVersion = [0-9][0-9]*/compileSdkVersion = 36/g' android/variables.gradle
             sed -i 's/targetSdkVersion = [0-9][0-9]*/targetSdkVersion = 36/g' android/variables.gradle
-            cat android/variables.gradle
           fi
-          grep -R "targetSdk\|compileSdk" -n android || true
-
-      - name: Sync Android
-        run: npx cap sync android
+          if [ -f android/app/build.gradle ]; then
+            sed -i 's/compileSdk [0-9][0-9]*/compileSdk 36/g' android/app/build.gradle || true
+            sed -i 's/targetSdk [0-9][0-9]*/targetSdk 36/g' android/app/build.gradle || true
+            sed -i 's/targetSdkVersion [0-9][0-9]*/targetSdkVersion 36/g' android/app/build.gradle || true
+          fi
+          echo "Android API configuration after sync:"
+          grep -R "compileSdk\|targetSdk" -n android || true
+          if grep -R "targetSdkVersion = 35\|targetSdk 35\|targetSdkVersion 35" -n android; then
+            echo "ERROR: targetSdk 35 still found after API 36 patch."
+            exit 1
+          fi
 
       - name: Apply DocWallet Docs launcher icon
         run: npm run android:icons
