@@ -71,6 +71,7 @@ export const Header: React.FC<HeaderProps> = ({ onAddClick, user, onLogout }) =>
           </a>
 
           <nav className="hidden lg:flex items-center gap-5 text-sm font-semibold text-slate-600">
+            <a href="/assinaturas" className="hover:text-primary">Assinaturas</a>
             <a href="/modelos" className="hover:text-primary">Modelos</a>
             <a href="/validar-documento" className="hover:text-primary">Validar gratis</a>
             <a href="/verificar-certificado" className="hover:text-primary">Certificado</a>
