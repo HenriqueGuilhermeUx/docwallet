@@ -22,7 +22,6 @@ import { PublicDoc } from './components/PublicDoc';
 import { ProductHome } from './components/ProductHome';
 import { CertificatePage } from './components/CertificatePage';
 import { SignPage } from './components/SignPage';
-import { SignatureModal } from './components/SignatureModal';
 import { DeleteAccountPage, PrivacyPage, TermsPage } from './components/LegalPage';
 import { ContractTemplatesPage } from './components/ContractTemplatesPage';
 import { FreeHashValidatorPage } from './components/FreeHashValidatorPage';
@@ -30,6 +29,7 @@ import { CertificateLookupPage } from './components/CertificateLookupPage';
 import { BusinessPage } from './components/BusinessPage';
 import { ApiFuturePage } from './components/ApiFuturePage';
 import { CertificateHistoryPanel } from './components/CertificateHistoryPanel';
+import { SignaturesPage } from './components/SignaturesPage';
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
@@ -99,7 +99,6 @@ function App() {
   const [showBlockchainModal, setShowBlockchainModal] = useState(false);
   const [showDIDWallet, setShowDIDWallet] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [showSignatureModal, setShowSignatureModal] = useState(false);
 
   const handleAddClick = () => {
     if (!user) {
@@ -139,6 +138,21 @@ function App() {
     }
   };
 
+  const footer = (
+    <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-slate-400 flex flex-wrap items-center justify-center gap-3">
+      <span>DocWallet Docs © 2026</span>
+      <a href="/assinaturas" className="hover:text-slate-600">Assinaturas</a>
+      <a href="/modelos" className="hover:text-slate-600">Modelos</a>
+      <a href="/validar-documento" className="hover:text-slate-600">Validar grátis</a>
+      <a href="/verificar-certificado" className="hover:text-slate-600">Verificar certificado</a>
+      <a href="/empresas" className="hover:text-slate-600">Empresas</a>
+      <a href="/api" className="hover:text-slate-600">API</a>
+      <a href="/privacy" className="hover:text-slate-600">Política de Privacidade</a>
+      <a href="/terms" className="hover:text-slate-600">Termos de Uso</a>
+      <a href="/delete-account" className="hover:text-slate-600">Excluir conta e dados</a>
+    </footer>
+  );
+
   if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -146,6 +160,28 @@ function App() {
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-500">Carregando...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (window.location.pathname === '/assinaturas') {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header
+          onAddClick={handleAddClick}
+          user={user}
+          onLogout={handleHeaderAction}
+        />
+        <SignaturesPage user={user} onLogin={() => setShowAuthModal(true)} />
+        {footer}
+        {showAuthModal && (
+          <AuthModal
+            isOpen={showAuthModal}
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={() => {}}
+          />
+        )}
+        {toast && <Toast message={toast.message} type={toast.type} />}
       </div>
     );
   }
@@ -177,8 +213,8 @@ function App() {
                     <Shield className="text-white" size={28} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">Validação Blockchain</h3>
-                    <p className="text-white/80 text-sm">Pague avulso por documento ou contrato. Escolha carteira cripto ou Pix quando disponível.</p>
+                    <h3 className="text-lg font-bold text-white">Validação e evidências</h3>
+                    <p className="text-white/80 text-sm">Valide documentos, crie contratos e acompanhe assinaturas eletrônicas.</p>
                   </div>
                 </div>
 
@@ -197,13 +233,13 @@ function App() {
                     <FileSignature size={18} />
                     Criar Contrato
                   </button>
-                  <button
-                    onClick={() => setShowSignatureModal(true)}
+                  <a
+                    href="/assinaturas"
                     className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
                   >
                     <FileSignature size={18} />
-                    Enviar para Assinatura
-                  </button>
+                    Assinaturas
+                  </a>
                   <button
                     onClick={() => setShowDIDWallet(true)}
                     className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
@@ -236,17 +272,7 @@ function App() {
         </>
       )}
 
-      <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-slate-400 flex flex-wrap items-center justify-center gap-3">
-        <span>DocWallet © 2026</span>
-        <a href="/modelos" className="hover:text-slate-600">Modelos</a>
-        <a href="/validar-documento" className="hover:text-slate-600">Validar grátis</a>
-        <a href="/verificar-certificado" className="hover:text-slate-600">Verificar certificado</a>
-        <a href="/empresas" className="hover:text-slate-600">Empresas</a>
-        <a href="/api" className="hover:text-slate-600">API</a>
-        <a href="/privacy" className="hover:text-slate-600">Política de Privacidade</a>
-        <a href="/terms" className="hover:text-slate-600">Termos de Uso</a>
-        <a href="/delete-account" className="hover:text-slate-600">Excluir conta e dados</a>
-      </footer>
+      {footer}
 
       {showAddModal && user && (
         <AddDocumentModal
@@ -280,11 +306,6 @@ function App() {
       <DIDWallet
         isOpen={showDIDWallet}
         onClose={() => setShowDIDWallet(false)}
-      />
-
-      <SignatureModal
-        isOpen={showSignatureModal}
-        onClose={() => setShowSignatureModal(false)}
       />
 
       {showShareModal && selectedDocument && (
