@@ -83,15 +83,19 @@ jobs:
             exit 1
           fi
 
-      - name: Force unique Play Store version
+      - name: Force high unique Play Store version
         run: |
           APP_GRADLE="android/app/build.gradle"
-          VERSION_CODE=$((200000 + GITHUB_RUN_NUMBER))
-          VERSION_NAME="1.2.${GITHUB_RUN_NUMBER}"
+          VERSION_CODE=$((2090000000 + (GITHUB_RUN_NUMBER % 9000000)))
+          VERSION_NAME="2.0.${GITHUB_RUN_NUMBER}"
           sed -i "s/versionCode [0-9][0-9]*/versionCode $VERSION_CODE/g" "$APP_GRADLE"
           sed -i "s/versionName \"[^\"]*\"/versionName \"$VERSION_NAME\"/g" "$APP_GRADLE"
           echo "Using Android versionCode=$VERSION_CODE versionName=$VERSION_NAME"
           grep -n "versionCode\|versionName" "$APP_GRADLE"
+          if [ "$VERSION_CODE" -ge 2100000000 ]; then
+            echo "ERROR: Android versionCode exceeded Play Store limit."
+            exit 1
+          fi
 
       - name: Apply DocWallet Docs launcher icon
         run: npm run android:icons
