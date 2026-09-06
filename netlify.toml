@@ -5,6 +5,8 @@
 [build.environment]
   NODE_VERSION = "24"
   NPM_CONFIG_LEGACY_PEER_DEPS = "true"
+  VITE_DOCWALLET_API_URL = "https://docwallet-backend.onrender.com"
+  VITE_DOCWALLET_PUBLIC_URL = "https://docwallet.netlify.app"
 
 [[redirects]]
   from = "/*"
