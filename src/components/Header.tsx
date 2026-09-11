@@ -138,6 +138,18 @@ export const Header: React.FC<HeaderProps> = ({ onAddClick, user, onLogout }) =>
             )}
           </div>
         </div>
+
+        <nav className="lg:hidden flex items-center gap-2 overflow-x-auto pb-3 -mt-1 text-xs font-bold text-slate-600">
+          <a href="/inteligencia" className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-full bg-indigo-50 text-indigo-700">
+            <Brain size={14} /> Inteligência
+          </a>
+          <a href="/docflow" className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-full bg-violet-50 text-violet-700">
+            <Zap size={14} /> DocFlow
+          </a>
+          <a href="/assinaturas" className="shrink-0 px-3 py-2 rounded-full bg-slate-100 text-slate-700">Assinaturas</a>
+          <a href="/validar-documento" className="shrink-0 px-3 py-2 rounded-full bg-slate-100 text-slate-700">Validar</a>
+          <a href="/verificar-certificado" className="shrink-0 px-3 py-2 rounded-full bg-slate-100 text-slate-700">Certificado</a>
+        </nav>
       </div>
     </header>
   );
