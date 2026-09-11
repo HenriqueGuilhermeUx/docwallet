@@ -15,7 +15,7 @@ import { AddDocumentModal } from './components/AddDocumentModal';
 import { DocumentViewerModal } from './components/DocumentViewerModal';
 import { AuthModal } from './components/AuthModal';
 import { BlockchainPage } from './components/BlockchainPage';
-import { Shield, FileSignature, FileKey } from 'lucide-react';
+import { Brain, Shield, FileSignature, FileKey } from 'lucide-react';
 import { DIDWallet } from './components/DIDWallet';
 import { ShareModal } from './components/ShareModal';
 import { PublicDoc } from './components/PublicDoc';
@@ -30,6 +30,7 @@ import { BusinessPage } from './components/BusinessPage';
 import { ApiFuturePage } from './components/ApiFuturePage';
 import { CertificateHistoryPanel } from './components/CertificateHistoryPanel';
 import { SignaturesPage } from './components/SignaturesPage';
+import { IntelligenceDashboard } from './components/IntelligenceDashboard';
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
@@ -141,6 +142,7 @@ function App() {
   const footer = (
     <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-slate-400 flex flex-wrap items-center justify-center gap-3">
       <span>DocWallet Docs © 2026</span>
+      <a href="/inteligencia" className="hover:text-slate-600">Inteligência</a>
       <a href="/assinaturas" className="hover:text-slate-600">Assinaturas</a>
       <a href="/modelos" className="hover:text-slate-600">Modelos</a>
       <a href="/validar-documento" className="hover:text-slate-600">Validar grátis</a>
@@ -167,20 +169,22 @@ function App() {
   if (window.location.pathname === '/assinaturas') {
     return (
       <div className="min-h-screen bg-background">
-        <Header
-          onAddClick={handleAddClick}
-          user={user}
-          onLogout={handleHeaderAction}
-        />
+        <Header onAddClick={handleAddClick} user={user} onLogout={handleHeaderAction} />
         <SignaturesPage user={user} onLogin={() => setShowAuthModal(true)} />
         {footer}
-        {showAuthModal && (
-          <AuthModal
-            isOpen={showAuthModal}
-            onClose={() => setShowAuthModal(false)}
-            onSuccess={() => {}}
-          />
-        )}
+        {showAuthModal && <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => {}} />}
+        {toast && <Toast message={toast.message} type={toast.type} />}
+      </div>
+    );
+  }
+
+  if (window.location.pathname === '/inteligencia') {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header onAddClick={handleAddClick} user={user} onLogout={handleHeaderAction} />
+        <IntelligenceDashboard user={user} documents={allDocuments} onLogin={() => setShowAuthModal(true)} />
+        {footer}
+        {showAuthModal && <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => {}} />}
         {toast && <Toast message={toast.message} type={toast.type} />}
       </div>
     );
@@ -210,18 +214,25 @@ function App() {
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
-                    <Shield className="text-white" size={28} />
+                    <Brain className="text-white" size={28} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">Validação e evidências</h3>
-                    <p className="text-white/80 text-sm">Valide documentos, crie contratos e acompanhe assinaturas eletrônicas.</p>
+                    <h3 className="text-lg font-bold text-white">Document Intelligence + Digital Trust</h3>
+                    <p className="text-white/80 text-sm">Entenda documentos, extraia prazos, gere alertas, assine e preserve a prova de integridade.</p>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-3">
+                  <a
+                    href="/inteligencia"
+                    className="px-5 py-3 bg-white text-indigo-600 rounded-xl font-semibold text-sm hover:bg-white/90 transition-colors flex items-center gap-2 shadow-lg"
+                  >
+                    <Brain size={18} />
+                    Inteligência
+                  </a>
                   <button
                     onClick={() => setShowBlockchainModal(true)}
-                    className="px-5 py-3 bg-white text-indigo-600 rounded-xl font-semibold text-sm hover:bg-white/90 transition-colors flex items-center gap-2 shadow-lg"
+                    className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
                   >
                     <Shield size={18} />
                     Validar Documento
