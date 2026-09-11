@@ -18,6 +18,15 @@ export interface SignatureParty {
   signed_email?: string | null;
   ip_address?: string | null;
   user_agent?: string | null;
+  evidence_level?: string | null;
+  signed_cpf?: string | null;
+  signed_phone?: string | null;
+  confirmation_phrase?: string | null;
+  has_drawn_signature?: boolean;
+  geo_latitude?: string | null;
+  geo_longitude?: string | null;
+  geo_accuracy?: string | null;
+  device_fingerprint?: Record<string, any>;
 }
 
 export interface SignatureRequest {
@@ -42,6 +51,19 @@ export interface SignatureEvidence {
   signature_request: Record<string, any>;
   parties: Record<string, any>[];
   events: Record<string, any>[];
+}
+
+export interface ReinforcedSignaturePayload {
+  name: string;
+  email?: string;
+  cpf?: string;
+  phone?: string;
+  confirmationPhrase?: string;
+  signatureImage?: string;
+  geolocation?: { latitude?: number | string; longitude?: number | string; accuracy?: number | string } | null;
+  deviceFingerprint?: Record<string, any>;
+  consentText?: string;
+  evidenceLevel?: 'basic_evidence' | 'reinforced_evidence';
 }
 
 const parseJson = async (response: Response) => {
@@ -83,6 +105,32 @@ export const getPublicAppUrl = () => {
   }
 
   return 'https://docwallet.netlify.app';
+};
+
+export const buildDeviceFingerprint = () => {
+  const nav = globalThis.navigator as Navigator & { userAgentData?: any };
+  const screenInfo = globalThis.screen || null;
+  return {
+    userAgent: nav.userAgent,
+    language: nav.language,
+    languages: Array.from(nav.languages || []),
+    platform: nav.platform,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezoneOffset: new Date().getTimezoneOffset(),
+    screen: screenInfo ? {
+      width: screenInfo.width,
+      height: screenInfo.height,
+      colorDepth: screenInfo.colorDepth,
+      pixelDepth: screenInfo.pixelDepth,
+    } : null,
+    viewport: {
+      width: globalThis.innerWidth,
+      height: globalThis.innerHeight,
+      devicePixelRatio: globalThis.devicePixelRatio,
+    },
+    userAgentData: nav.userAgentData || null,
+    capturedAt: new Date().toISOString(),
+  };
 };
 
 export const listSignatureRequests = async (): Promise<SignatureRequest[]> => {
@@ -151,11 +199,23 @@ export const readPublicSignature = async (code: string) => {
   return data;
 };
 
-export const acceptSignature = async (code: string, params: { name: string; email?: string }) => {
+export const acceptSignature = async (code: string, params: ReinforcedSignaturePayload) => {
   const response = await fetch(`${requireApiUrl()}/api/sign/${code}/accept`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ signed_name: params.name, signed_email: params.email, accepted: true }),
+    body: JSON.stringify({
+      signed_name: params.name,
+      signed_email: params.email,
+      signed_cpf: params.cpf,
+      signed_phone: params.phone,
+      confirmation_phrase: params.confirmationPhrase,
+      signature_image: params.signatureImage,
+      geolocation: params.geolocation,
+      device_fingerprint: params.deviceFingerprint || buildDeviceFingerprint(),
+      consent_text: params.consentText,
+      evidence_level: params.evidenceLevel || 'reinforced_evidence',
+      accepted: true,
+    }),
   });
   const data = await parseJson(response);
   if (!response.ok || data.success === false) {
