@@ -7,6 +7,7 @@ import {
   deleteBackendDocument,
   backendShareLink,
 } from '../lib/backendDocuments';
+import { analyzeDocument } from '../lib/intelligence';
 
 interface Toast {
   id: string;
@@ -107,7 +108,14 @@ export const useDocumentsWithAuth = () => {
       );
 
       setDocuments(prev => [newDoc, ...prev]);
-      showToast('Documento salvo no backend DocWallet!', 'success');
+      showToast('Documento salvo. Iniciando DocWallet Intelligence...', 'success');
+
+      analyzeDocument(newDoc.id)
+        .then(() => showToast('Documento analisado pelo DocWallet Intelligence', 'success'))
+        .catch((error) => {
+          console.warn('DocWallet Intelligence analysis failed:', error);
+          showToast('Documento salvo. Análise pode ser feita ao abrir o documento.', 'info');
+        });
 
       return newDoc;
     } catch (error) {
