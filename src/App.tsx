@@ -15,7 +15,7 @@ import { AddDocumentModal } from './components/AddDocumentModal';
 import { DocumentViewerModal } from './components/DocumentViewerModal';
 import { AuthModal } from './components/AuthModal';
 import { BlockchainPage } from './components/BlockchainPage';
-import { Brain, Shield, FileSignature, FileKey } from 'lucide-react';
+import { Brain, Shield, FileSignature, FileKey, Zap } from 'lucide-react';
 import { DIDWallet } from './components/DIDWallet';
 import { ShareModal } from './components/ShareModal';
 import { PublicDoc } from './components/PublicDoc';
@@ -31,6 +31,7 @@ import { ApiFuturePage } from './components/ApiFuturePage';
 import { CertificateHistoryPanel } from './components/CertificateHistoryPanel';
 import { SignaturesPage } from './components/SignaturesPage';
 import { IntelligenceDashboard } from './components/IntelligenceDashboard';
+import { DocFlowBusinessPage } from './components/DocFlowBusinessPage';
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
@@ -143,6 +144,7 @@ function App() {
     <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-slate-400 flex flex-wrap items-center justify-center gap-3">
       <span>DocWallet Docs © 2026</span>
       <a href="/inteligencia" className="hover:text-slate-600">Inteligência</a>
+      <a href="/docflow" className="hover:text-slate-600">DocFlow</a>
       <a href="/assinaturas" className="hover:text-slate-600">Assinaturas</a>
       <a href="/modelos" className="hover:text-slate-600">Modelos</a>
       <a href="/validar-documento" className="hover:text-slate-600">Validar grátis</a>
@@ -190,6 +192,19 @@ function App() {
     );
   }
 
+  if (window.location.pathname === '/docflow' || window.location.pathname === '/docflow-business') {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header onAddClick={handleAddClick} user={user} onLogout={handleHeaderAction} />
+        <DocFlowBusinessPage user={user} documents={allDocuments} onLogin={() => setShowAuthModal(true)} onAddDocument={handleAddClick} />
+        {footer}
+        {showAddModal && user && <AddDocumentModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onAdd={handleAddDocument} />}
+        {showAuthModal && <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => {}} />}
+        {toast && <Toast message={toast.message} type={toast.type} />}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header
@@ -218,7 +233,7 @@ function App() {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white">Document Intelligence + Digital Trust</h3>
-                    <p className="text-white/80 text-sm">Entenda documentos, extraia prazos, gere alertas, assine e preserve a prova de integridade.</p>
+                    <p className="text-white/80 text-sm">Entenda documentos, crie processos, acompanhe assinaturas e registre provas de integridade.</p>
                   </div>
                 </div>
 
@@ -230,20 +245,13 @@ function App() {
                     <Brain size={18} />
                     Inteligência
                   </a>
-                  <button
-                    onClick={() => setShowBlockchainModal(true)}
+                  <a
+                    href="/docflow"
                     className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
                   >
-                    <Shield size={18} />
-                    Validar Documento
-                  </button>
-                  <button
-                    onClick={() => setShowBlockchainModal(true)}
-                    className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
-                  >
-                    <FileSignature size={18} />
-                    Criar Contrato
-                  </button>
+                    <Zap size={18} />
+                    DocFlow
+                  </a>
                   <a
                     href="/assinaturas"
                     className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
@@ -251,6 +259,13 @@ function App() {
                     <FileSignature size={18} />
                     Assinaturas
                   </a>
+                  <button
+                    onClick={() => setShowBlockchainModal(true)}
+                    className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
+                  >
+                    <Shield size={18} />
+                    Validar / Blockchain
+                  </button>
                   <button
                     onClick={() => setShowDIDWallet(true)}
                     className="px-5 py-3 bg-white/20 backdrop-blur text-white rounded-xl font-semibold text-sm hover:bg-white/30 transition-colors flex items-center gap-2 border border-white/30"
