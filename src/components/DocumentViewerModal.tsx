@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { X, Download, Share2, Trash2, ZoomIn, ZoomOut, ShieldCheck } from 'lucide-react';
+import { X, Download, Share2, Trash2, ZoomIn, ZoomOut, ShieldCheck, Brain } from 'lucide-react';
 import { Document, getDocumentTypeInfo } from '../types/document';
 import { formatDate } from '../utils/helpers';
 import { ShareModal } from './ShareModal';
+import { DocumentIntelligencePanel } from './DocumentIntelligencePanel';
 
 interface DocumentViewerModalProps {
   document: Document;
@@ -13,6 +14,7 @@ interface DocumentViewerModalProps {
 export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ document, onClose, onDelete }) => {
   const [showShare, setShowShare] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showIntelligence, setShowIntelligence] = useState(false);
   const [zoom, setZoom] = useState(1);
 
   const typeInfo = getDocumentTypeInfo(document.type);
@@ -37,15 +39,15 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
         <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-4 z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center shrink-0">
                 <span className="text-white font-semibold">{typeInfo.labelPt.substring(0, 2)}</span>
               </div>
-              <div>
-                <h3 className="text-white font-semibold flex items-center gap-2">
+              <div className="min-w-0">
+                <h3 className="text-white font-semibold flex items-center gap-2 truncate">
                   {document.name}
-                  {document.isNotarized && <ShieldCheck className="text-emerald-300" size={18} />}
+                  {document.isNotarized && <ShieldCheck className="text-emerald-300 shrink-0" size={18} />}
                 </h3>
                 <p className="text-white/60 text-sm">{formatDate(document.createdAt)}</p>
                 {document.fileHash && (
@@ -53,17 +55,26 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
                 )}
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <X className="text-white" size={24} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowIntelligence((value) => !value)}
+                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-full transition-colors text-white text-sm font-semibold flex items-center gap-2"
+              >
+                <Brain size={18} />
+                <span className="hidden sm:inline">Inteligência</span>
+              </button>
+              <button
+                onClick={onClose}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <X className="text-white" size={24} />
+              </button>
+            </div>
           </div>
         </div>
 
         <div
-          className="relative w-full h-full flex items-center justify-center overflow-auto p-4 pt-24 pb-24"
+          className={`relative w-full h-full flex items-center justify-center overflow-auto p-4 pt-24 pb-24 ${showIntelligence ? 'lg:pr-[34rem]' : ''}`}
           onClick={() => !isPdf && setZoom(zoom === 1 ? 1.5 : 1)}
         >
           <div
@@ -92,6 +103,12 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
           </div>
         </div>
 
+        {showIntelligence && (
+          <div className="absolute right-3 top-20 bottom-24 z-20 w-[calc(100vw-1.5rem)] sm:w-[34rem] flex items-start justify-end pointer-events-auto">
+            <DocumentIntelligencePanel document={document} />
+          </div>
+        )}
+
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 z-10">
           {!isPdf && (
             <div className="flex items-center justify-center gap-4">
@@ -111,7 +128,14 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
             </div>
           )}
 
-          <div className="flex items-center justify-center gap-3 mt-4">
+          <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
+            <button
+              onClick={() => setShowIntelligence((value) => !value)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-medium transition-colors"
+            >
+              <Brain size={18} />
+              <span>Inteligência</span>
+            </button>
             <button
               onClick={handleDownload}
               className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full font-medium transition-colors"
