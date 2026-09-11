@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle, Copy, FileSignature, KeyRound, Loader2, Send, Shield, Wallet } from 'lucide-react';
-import { acceptSignature, publicSignPathToUrl, readPublicSignature } from '../lib/signatures';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertCircle, CheckCircle, Copy, FileSignature, KeyRound, Loader2, MapPin, PenLine, RotateCcw, Send, Shield, Smartphone, Wallet } from 'lucide-react';
+import { acceptSignature, buildDeviceFingerprint, publicSignPathToUrl, readPublicSignature } from '../lib/signatures';
 import { getIcpSignatureConfig, IcpSignatureConfig, IcpSignatureSession, startPublicIcpSignature } from '../lib/icpSignature';
 
 type NextParty = {
@@ -23,13 +23,25 @@ type PublicData = {
   next_party?: NextParty | null;
 };
 
+type GeoCapture = { latitude?: number; longitude?: number; accuracy?: number } | null;
+
+const confirmationRequired = 'EU ACEITO';
+
 export const SignPage: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawingRef = useRef(false);
   const [data, setData] = useState<PublicData | null>(null);
   const [nextParty, setNextParty] = useState<NextParty | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [phone, setPhone] = useState('');
+  const [confirmationPhrase, setConfirmationPhrase] = useState('');
   const [accepted, setAccepted] = useState(false);
   const [icpAccepted, setIcpAccepted] = useState(false);
+  const [signatureTouched, setSignatureTouched] = useState(false);
+  const [geo, setGeo] = useState<GeoCapture>(null);
+  const [geoStatus, setGeoStatus] = useState('Localização opcional não capturada.');
   const [icpConfig, setIcpConfig] = useState<IcpSignatureConfig | null>(null);
   const [icpSession, setIcpSession] = useState<IcpSignatureSession | null>(null);
   const [icpLoading, setIcpLoading] = useState(false);
@@ -44,6 +56,23 @@ export const SignPage: React.FC = () => {
     const parts = window.location.pathname.split('/').filter(Boolean);
     return parts[0] === 'sign' ? parts[1] : '';
   }, []);
+
+  const resetCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#0f172a';
+    setSignatureTouched(false);
+  };
+
+  useEffect(() => {
+    resetCanvas();
+  }, [loading]);
 
   useEffect(() => {
     const load = async () => {
@@ -65,11 +94,100 @@ export const SignPage: React.FC = () => {
     load();
   }, [code]);
 
+  const getCanvasPoint = (event: any) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = event.clientX ?? event.touches?.[0]?.clientX;
+    const clientY = event.clientY ?? event.touches?.[0]?.clientY;
+    if (clientX === undefined || clientY === undefined) return null;
+    return {
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height),
+    };
+  };
+
+  const startDrawing = (event: any) => {
+    event.preventDefault?.();
+    const canvas = canvasRef.current;
+    const point = getCanvasPoint(event);
+    if (!canvas || !point) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    drawingRef.current = true;
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y);
+    setSignatureTouched(true);
+  };
+
+  const draw = (event: any) => {
+    if (!drawingRef.current) return;
+    event.preventDefault?.();
+    const canvas = canvasRef.current;
+    const point = getCanvasPoint(event);
+    if (!canvas || !point) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.lineTo(point.x, point.y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    drawingRef.current = false;
+  };
+
+  const captureLocation = () => {
+    setGeoStatus('Solicitando permissão de localização...');
+    if (!navigator.geolocation) {
+      setGeoStatus('Este dispositivo não suporta geolocalização.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const captured = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        };
+        setGeo(captured);
+        setGeoStatus(`Localização capturada com precisão aproximada de ${Math.round(position.coords.accuracy)}m.`);
+      },
+      () => setGeoStatus('Localização não autorizada. A assinatura pode seguir sem geolocalização.'),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
+    );
+  };
+
   const handleAccept = async () => {
     setError('');
+    if (!accepted) {
+      setError('Confirme que leu e aceita assinar eletronicamente.');
+      return;
+    }
+    if (confirmationPhrase.trim().toUpperCase() !== confirmationRequired) {
+      setError(`Digite ${confirmationRequired} para confirmar a assinatura.`);
+      return;
+    }
+    if (!signatureTouched || !canvasRef.current) {
+      setError('Desenhe sua assinatura no campo indicado.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const signed = await acceptSignature(code, { name, email });
+      const signatureImage = canvasRef.current.toDataURL('image/png');
+      const consentText = 'Li o documento apresentado, confirmo meus dados, aceito assinar eletronicamente pelo DocWallet Docs e autorizo o registro das evidências técnicas da assinatura.';
+      const signed = await acceptSignature(code, {
+        name,
+        email,
+        cpf,
+        phone,
+        confirmationPhrase,
+        signatureImage,
+        geolocation: geo,
+        deviceFingerprint: buildDeviceFingerprint(),
+        consentText,
+        evidenceLevel: 'reinforced_evidence',
+      });
       setSuccess(true);
       setData(signed);
       setNextParty(signed.next_party || null);
@@ -92,8 +210,7 @@ export const SignPage: React.FC = () => {
         window.location.href = result.session.redirectUrl;
         return;
       }
-      const metadataMessage = typeof result.session.metadata?.message === 'string' ? result.session.metadata.message : '';
-      setIcpNotice(metadataMessage || result.config.statusMessage || 'Assinatura ICP-Brasil preparada. Configure o provider para assinar com certificado digital.');
+      setIcpNotice(result.session.metadata?.message as string || result.config.statusMessage || 'Assinatura ICP-Brasil preparada. Configure o provider para assinar com certificado digital.');
     } catch (err: any) {
       setError(err?.message || 'Erro ao iniciar assinatura ICP-Brasil.');
     } finally {
@@ -102,7 +219,6 @@ export const SignPage: React.FC = () => {
   };
 
   const nextPartyUrl = nextParty ? publicSignPathToUrl(nextParty.url) : '';
-  const icpSessionMessage = typeof icpSession?.metadata?.message === 'string' ? icpSession.metadata.message : '';
 
   const copyNextLink = async () => {
     if (!nextPartyUrl) return;
@@ -150,17 +266,17 @@ export const SignPage: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center"><Wallet size={22} /></div>
-            <div><p className="font-bold">DocWallet</p><p className="text-xs text-slate-400">assinatura eletrônica</p></div>
+            <div><p className="font-bold">DocWallet</p><p className="text-xs text-slate-400">assinatura eletrônica com evidências</p></div>
           </div>
           {completed && <span className="text-xs bg-emerald-500/20 text-emerald-200 px-3 py-1 rounded-full">Contrato completo</span>}
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8 grid lg:grid-cols-[380px_1fr] gap-6">
+      <main className="max-w-6xl mx-auto px-4 py-8 grid lg:grid-cols-[430px_1fr] gap-6">
         <aside className="bg-white text-slate-900 rounded-2xl p-6 shadow-2xl h-fit">
           <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4"><FileSignature size={28} /></div>
           <h1 className="text-2xl font-bold leading-tight break-words">{data?.request.title}</h1>
-          <p className="text-sm text-slate-500 mt-2">Leia o contrato e confirme sua assinatura eletrônica.</p>
+          <p className="text-sm text-slate-500 mt-2">Leia o contrato, confirme sua identidade e registre a assinatura eletrônica com evidências reforçadas.</p>
 
           <div className="mt-5 p-3 rounded-xl bg-slate-50 border border-slate-100">
             <p className="text-xs text-slate-500 mb-1">Hash original SHA-256</p>
@@ -187,7 +303,7 @@ export const SignPage: React.FC = () => {
             <div className="mt-6 space-y-4">
               <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-800 flex gap-3">
                 <CheckCircle size={22} />
-                <div><p className="font-bold">Assinatura registrada</p><p className="text-sm">Sua evidência foi salva com data, IP, navegador e hash do contrato.</p></div>
+                <div><p className="font-bold">Assinatura registrada</p><p className="text-sm">Sua evidência foi salva com data, IP, navegador, dispositivo, assinatura desenhada e hash do contrato.</p></div>
               </div>
 
               {nextParty && (
@@ -213,14 +329,49 @@ export const SignPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="mt-6 space-y-3">
+            <div className="mt-6 space-y-4">
+              <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-4">
+                <p className="font-bold text-indigo-950 flex items-center gap-2"><Shield size={18} /> DocWallet Sign Evidências Reforçadas</p>
+                <p className="text-xs text-indigo-900 mt-1">Nossa solução registra aceite, assinatura desenhada, frase de confirmação, data/hora, IP, navegador, dispositivo, hash e geolocalização opcional. Não é ICP-Brasil qualificada.</p>
+              </div>
+
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome completo" className="w-full px-4 py-3 border border-slate-300 rounded-xl" />
               <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Seu e-mail" className="w-full px-4 py-3 border border-slate-300 rounded-xl" />
-              <label className="flex gap-3 text-sm text-slate-600"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /> Li, aceito e desejo assinar eletronicamente este contrato.</label>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="CPF opcional" className="w-full px-4 py-3 border border-slate-300 rounded-xl" />
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefone opcional" className="w-full px-4 py-3 border border-slate-300 rounded-xl" />
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <p className="font-bold text-slate-900 flex items-center gap-2"><PenLine size={18} /> Assinatura desenhada</p>
+                  <button type="button" onClick={resetCanvas} className="text-xs px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center gap-1"><RotateCcw size={14} /> Limpar</button>
+                </div>
+                <canvas
+                  ref={canvasRef}
+                  width={640}
+                  height={220}
+                  className="w-full h-36 bg-white border border-slate-200 rounded-xl touch-none"
+                  onPointerDown={startDrawing}
+                  onPointerMove={draw}
+                  onPointerUp={stopDrawing}
+                  onPointerLeave={stopDrawing}
+                />
+                <p className="text-xs text-slate-500 mt-2">Use o dedo, mouse ou caneta para desenhar sua assinatura.</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="font-bold text-slate-900 flex items-center gap-2"><Smartphone size={18} /> Confirmação e evidências</p>
+                <input value={confirmationPhrase} onChange={(e) => setConfirmationPhrase(e.target.value)} placeholder="Digite EU ACEITO" className="mt-3 w-full px-4 py-3 border border-slate-300 rounded-xl" />
+                <button type="button" onClick={captureLocation} className="mt-3 w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"><MapPin size={17} /> Adicionar localização opcional</button>
+                <p className="text-xs text-slate-500 mt-2">{geoStatus}</p>
+              </div>
+
+              <label className="flex gap-3 text-sm text-slate-600"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /> Li, aceito e desejo assinar eletronicamente este contrato pelo DocWallet Docs, com registro das evidências técnicas da assinatura.</label>
               {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">{error}</div>}
-              <button onClick={handleAccept} disabled={!accepted || !name || submitting} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={handleAccept} disabled={!accepted || !name || !signatureTouched || submitting} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
                 {submitting ? <Loader2 className="animate-spin" size={18} /> : <Shield size={18} />}
-                Assinar eletronicamente com evidências
+                Assinar com evidências reforçadas
               </button>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -238,7 +389,7 @@ export const SignPage: React.FC = () => {
                 </button>
                 {(icpNotice || icpSession) && (
                   <div className="mt-3 rounded-lg bg-amber-50 border border-amber-100 p-3 text-xs text-amber-800">
-                    {icpNotice || icpSessionMessage || 'Provider ICP-Brasil ainda não configurado.'}
+                    {icpNotice || icpSession?.metadata?.message as string || 'Provider ICP-Brasil ainda não configurado.'}
                   </div>
                 )}
               </div>
