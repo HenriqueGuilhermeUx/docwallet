@@ -92,7 +92,8 @@ export const SignPage: React.FC = () => {
         window.location.href = result.session.redirectUrl;
         return;
       }
-      setIcpNotice(result.session.metadata?.message as string || result.config.statusMessage || 'Assinatura ICP-Brasil preparada. Configure o provider para assinar com certificado digital.');
+      const metadataMessage = typeof result.session.metadata?.message === 'string' ? result.session.metadata.message : '';
+      setIcpNotice(metadataMessage || result.config.statusMessage || 'Assinatura ICP-Brasil preparada. Configure o provider para assinar com certificado digital.');
     } catch (err: any) {
       setError(err?.message || 'Erro ao iniciar assinatura ICP-Brasil.');
     } finally {
@@ -101,6 +102,7 @@ export const SignPage: React.FC = () => {
   };
 
   const nextPartyUrl = nextParty ? publicSignPathToUrl(nextParty.url) : '';
+  const icpSessionMessage = typeof icpSession?.metadata?.message === 'string' ? icpSession.metadata.message : '';
 
   const copyNextLink = async () => {
     if (!nextPartyUrl) return;
@@ -236,7 +238,7 @@ export const SignPage: React.FC = () => {
                 </button>
                 {(icpNotice || icpSession) && (
                   <div className="mt-3 rounded-lg bg-amber-50 border border-amber-100 p-3 text-xs text-amber-800">
-                    {icpNotice || icpSession?.metadata?.message as string || 'Provider ICP-Brasil ainda não configurado.'}
+                    {icpNotice || icpSessionMessage || 'Provider ICP-Brasil ainda não configurado.'}
                   </div>
                 )}
               </div>
