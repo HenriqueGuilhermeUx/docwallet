@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  ArrowRight,
   BarChart3,
   Brain,
   Building2,
@@ -21,6 +20,7 @@ import {
 } from 'lucide-react';
 import { BackendUser } from '../lib/backendSession';
 import { Document } from '../types/document';
+import { analyzeDocument } from '../lib/intelligence';
 import {
   approveDocFlowSubmission,
   createDocFlowIntegration,
@@ -63,6 +63,31 @@ const workflowBlocks = [
   ['ENTÃO', 'aprovar, exportar, arquivar'],
 ];
 
+const companyLanes = [
+  {
+    title: 'Funcionário / campo',
+    icon: Camera,
+    items: ['abre o app', 'fotografa recibo ou comprovante', 'informa projeto e centro de custo', 'envia em menos de 30 segundos'],
+  },
+  {
+    title: 'Gestor',
+    icon: ClipboardCheck,
+    items: ['recebe processo estruturado', 'confere valor, data e fornecedor', 'aprova ou rejeita', 'deixa trilha de auditoria'],
+  },
+  {
+    title: 'Financeiro / compliance',
+    icon: ShieldCheck,
+    items: ['visualiza aprovados', 'exporta CSV/webhook/ERP', 'guarda comprovante com hash', 'formaliza pagamento e arquivo'],
+  },
+];
+
+const captureCards = [
+  { key: 'camera_mobile', label: 'Câmera mobile', Icon: Camera },
+  { key: 'upload_web', label: 'Upload web', Icon: Upload },
+  { key: 'email_forwarding', label: 'Email forwarding', Icon: Mail },
+  { key: 'api', label: 'API / batch', Icon: FileText },
+];
+
 const Metric: React.FC<{ label: string; value: number | string; icon: React.ReactNode; hint?: string }> = ({ label, value, icon, hint }) => (
   <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
     <div className="flex items-center justify-between gap-3">
@@ -82,12 +107,7 @@ const JsonPreview: React.FC<{ data: Record<string, unknown> }> = ({ data }) => (
   </pre>
 );
 
-const captureCards = [
-  { label: 'Câmera mobile', Icon: Camera },
-  { label: 'Upload web', Icon: Upload },
-  { label: 'Email forwarding', Icon: Mail },
-  { label: 'API / batch', Icon: FileText },
-];
+const sessionExpired = (message: string) => message.toLowerCase().includes('sessão expirou') || message.toLowerCase().includes('token inválido');
 
 export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin, onAddDocument }) => {
   const [dashboard, setDashboard] = useState<DocFlowDashboard | null>(null);
@@ -125,8 +145,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       setDashboard(dash);
       setSubmissions(subs);
       if (!selectedWorkflowId && dash.workflows[0]) setSelectedWorkflowId(dash.workflows[0].id);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar DocFlow.');
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao carregar DocFlow.');
     } finally {
       setLoading(false);
     }
@@ -134,7 +154,7 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
 
   useEffect(() => {
     load().catch(() => undefined);
-  }, [user?.email]);
+  }, [user?.id]);
 
   const parseAnswers = () => {
     const out: Record<string, string> = {};
@@ -154,8 +174,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       setNotice(`Fluxo criado: ${workflow.name}`);
       setSelectedWorkflowId(workflow.id);
       await load();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao criar fluxo.');
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao criar fluxo.');
     } finally {
       setWorking(false);
     }
@@ -185,8 +205,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       setNotice(`Fluxo customizado criado: ${workflow.name}`);
       setSelectedWorkflowId(workflow.id);
       await load();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao criar fluxo customizado.');
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao criar fluxo customizado.');
     } finally {
       setWorking(false);
     }
@@ -202,18 +222,21 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
     setNotice('');
     try {
       const doc = documents.find((item) => item.id === selectedDocumentId);
+      if (selectedDocumentId) {
+        await analyzeDocument(selectedDocumentId).catch(() => undefined);
+      }
       const submission = await createDocFlowSubmission({
         workflowId: activeWorkflow.id,
         documentId: selectedDocumentId || undefined,
         title: doc ? `${activeWorkflow.name} • ${doc.name}` : activeWorkflow.name,
-        sourceType: selectedDocumentId ? 'upload_web' : 'api',
+        sourceType: selectedDocumentId ? 'camera_mobile' : 'api',
         answers: parseAnswers(),
       });
       const processed = await runDocFlowSubmission(submission.id, parseAnswers());
       setNotice(`Processo criado: ${statusLabel[processed.status] || processed.status}`);
       await load();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao iniciar processo.');
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao iniciar processo.');
     } finally {
       setWorking(false);
     }
@@ -224,10 +247,10 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
     setError('');
     try {
       await approveDocFlowSubmission(submissionId, 'Aprovado pelo gestor');
-      setNotice('Processo aprovado.');
+      setNotice('Processo aprovado. O financeiro já pode formalizar pagamento/exportação.');
       await load();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao aprovar.');
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao aprovar.');
     } finally {
       setWorking(false);
     }
@@ -238,10 +261,10 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
     setError('');
     try {
       await rejectDocFlowSubmission(submissionId, 'Rejeitado para correção');
-      setNotice('Processo rejeitado.');
+      setNotice('Processo rejeitado para correção.');
       await load();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao rejeitar.');
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao rejeitar.');
     } finally {
       setWorking(false);
     }
@@ -260,8 +283,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
         config: { url: 'https://erp.exemplo.com/webhook', mode: 'disabled_until_review' },
       });
       setNotice('Integração criada em modo seguro/desabilitado. Nenhum dado foi enviado para fora.');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao preparar integração.');
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao preparar integração.');
     } finally {
       setWorking(false);
     }
@@ -292,14 +315,14 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
           <div>
             <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 px-3 py-1 rounded-full text-sm font-semibold mb-4"><Building2 size={16} /> DOCFLOW BY DOCWALLET</div>
             <h1 className="text-3xl lg:text-5xl font-black leading-tight">Transforme documentos em processos.</h1>
-            <p className="text-slate-300 mt-4 max-w-3xl">Pare de digitar o que já está no papel. Use AV Document Intelligence para transformar foto, PDF, nota, recibo, comprovante, formulário e contrato em dados estruturados + workflow + aprovação + integração.</p>
+            <p className="text-slate-300 mt-4 max-w-3xl">O funcionário fotografa. A empresa aprova, formaliza, exporta e arquiva. O motor por baixo é o AV Document Intelligence do DocWallet.</p>
             <div className="flex flex-wrap gap-3 mt-6">
               <button onClick={onAddDocument} className="px-5 py-3 bg-white text-slate-950 rounded-xl font-bold flex items-center gap-2"><Camera size={18} /> Capturar documento</button>
               <button onClick={createTemplateWorkflow} disabled={working} className="px-5 py-3 bg-violet-600 text-white rounded-xl font-bold flex items-center gap-2 disabled:opacity-50"><Zap size={18} /> Criar fluxo por template</button>
             </div>
           </div>
           <div className="bg-white/10 border border-white/10 rounded-3xl p-5">
-            <p className="text-sm text-slate-300">Exemplo</p>
+            <p className="text-sm text-slate-300">Prestação de contas de viagem</p>
             <div className="mt-3 space-y-2 text-sm">
               {workflowBlocks.map(([k, v]) => (
                 <div key={k} className="bg-white/10 rounded-2xl p-3 flex gap-3"><span className="font-black text-violet-200 w-20">{k}</span><span>{v}</span></div>
@@ -309,9 +332,33 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
         </div>
       </section>
 
-      {error && <div className="bg-red-50 text-red-700 rounded-2xl p-4 text-sm">{error}</div>}
+      {error && sessionExpired(error) && (
+        <section className="bg-amber-50 border border-amber-100 text-amber-900 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 className="font-bold">Sessão antiga detectada</h2>
+            <p className="text-sm mt-1">O backend foi atualizado e o token antigo perdeu validade. Entre novamente para limpar essa mensagem.</p>
+          </div>
+          <button onClick={() => window.location.reload()} className="px-5 py-3 rounded-xl bg-amber-600 text-white font-bold">Atualizar login</button>
+        </section>
+      )}
+      {error && !sessionExpired(error) && <div className="bg-red-50 text-red-700 rounded-2xl p-4 text-sm">{error}</div>}
       {notice && <div className="bg-emerald-50 text-emerald-700 rounded-2xl p-4 text-sm">{notice}</div>}
       {loading && <div className="bg-white rounded-2xl p-4 text-slate-500 flex items-center gap-2"><Loader2 className="animate-spin" size={18} /> Carregando DocFlow...</div>}
+
+      <section className="grid lg:grid-cols-3 gap-4">
+        {companyLanes.map((lane) => {
+          const Icon = lane.icon;
+          return (
+            <div key={lane.title} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5">
+              <div className="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center mb-4"><Icon size={23} /></div>
+              <h2 className="text-xl font-black text-slate-950">{lane.title}</h2>
+              <div className="mt-4 space-y-2">
+                {lane.items.map((item) => <div key={item} className="flex items-center gap-2 text-sm text-slate-600"><CheckCircle size={16} className="text-emerald-500" /> {item}</div>)}
+              </div>
+            </div>
+          );
+        })}
+      </section>
 
       <section className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Metric label="Documentos recebidos" value={metrics.documentsReceived} icon={<Upload size={23} />} />
@@ -320,6 +367,22 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
         <Metric label="Aguardando aprovação" value={metrics.awaitingApproval} icon={<ClipboardCheck size={23} />} />
         <Metric label="Concluídos" value={metrics.completed} icon={<CheckCircle size={23} />} />
         <Metric label="Tempo economizado" value={`${metrics.timeSavedMinutes}min`} icon={<BarChart3 size={23} />} hint="Estimativa conservadora: 8 min por documento processado." />
+      </section>
+
+      <section className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 lg:p-7">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
+          <div>
+            <h2 className="text-2xl font-black text-slate-950">Captura mobile-first</h2>
+            <p className="text-sm text-slate-500 mt-1">O fluxo ideal é abrir, fotografar, confirmar centro de custo/projeto e enviar.</p>
+          </div>
+          <button onClick={onAddDocument} className="px-5 py-3 bg-slate-950 text-white rounded-xl font-bold flex items-center justify-center gap-2"><Camera size={18} /> Adicionar foto/PDF</button>
+        </div>
+        <div className="grid sm:grid-cols-4 gap-3">
+          {captureCards.map(({ key, label, Icon }) => {
+            const enabled = capture.includes(key) || (key === 'api' && capture.includes('batch_upload'));
+            return <div key={key} className="rounded-2xl bg-slate-50 border border-slate-100 p-4"><Icon className="text-violet-600 mb-2" size={22} /><p className="font-bold text-sm">{label}</p><p className="text-xs text-slate-500 mt-1">{enabled ? 'Preparado' : 'Em roadmap'}</p></div>;
+          })}
+        </div>
       </section>
 
       <section className="grid lg:grid-cols-[0.95fr_1.05fr] gap-5">
@@ -331,123 +394,86 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
           <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3">
             {templates.map((tpl) => <option key={tpl.key} value={tpl.key}>{tpl.name}</option>)}
           </select>
-          <div className="space-y-3 max-h-72 overflow-auto">
-            {templates.map((tpl) => (
-              <button key={tpl.key} onClick={() => setSelectedTemplate(tpl.key)} className={`w-full text-left rounded-2xl border p-4 transition-colors ${selectedTemplate === tpl.key ? 'border-violet-300 bg-violet-50' : 'border-slate-100 bg-slate-50 hover:bg-slate-100'}`}>
-                <p className="font-bold text-slate-900">{tpl.name}</p>
-                <p className="text-sm text-slate-500 mt-1">{tpl.description}</p>
-              </button>
-            ))}
-          </div>
-          <button onClick={createTemplateWorkflow} disabled={working || !selectedTemplate} className="w-full py-3 rounded-xl bg-violet-600 text-white font-bold disabled:opacity-50 flex items-center justify-center gap-2">
-            {working ? <Loader2 className="animate-spin" size={18} /> : <ArrowRight size={18} />}
-            Criar fluxo selecionado
+          <button onClick={createTemplateWorkflow} disabled={working || !templates.length} className="w-full px-5 py-3 bg-violet-600 text-white rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+            {working ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
+            Criar fluxo por template
           </button>
+
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="font-black text-slate-950 flex items-center gap-2"><Settings size={18} /> Builder no-code</h3>
+            <input value={customName} onChange={(e) => setCustomName(e.target.value)} className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-3" />
+            <textarea value={customFields} onChange={(e) => setCustomFields(e.target.value)} className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-3 min-h-[90px]" />
+            <button onClick={createCustomWorkflow} disabled={working} className="mt-3 w-full px-5 py-3 bg-slate-950 text-white rounded-xl font-bold disabled:opacity-50">Criar fluxo customizado</button>
+          </div>
         </div>
 
         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 lg:p-7 space-y-5">
           <div>
-            <h2 className="text-2xl font-black text-slate-950">No-code workflow builder</h2>
-            <p className="text-sm text-slate-500 mt-1">Crie um schema customizado dizendo quais dados quer extrair.</p>
+            <h2 className="text-2xl font-black text-slate-950">Rodar processo</h2>
+            <p className="text-sm text-slate-500 mt-1">Selecione um fluxo e um documento já salvo/analisado no DocWallet.</p>
           </div>
-          <input value={customName} onChange={(e) => setCustomName(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3" placeholder="Nome do fluxo" />
-          <textarea value={customFields} onChange={(e) => setCustomFields(e.target.value)} className="w-full min-h-[95px] rounded-xl border border-slate-200 px-4 py-3" placeholder="Campos separados por vírgula" />
-          <div className="grid sm:grid-cols-5 gap-2">
-            {workflowBlocks.map(([k, v]) => (
-              <div key={k} className="rounded-2xl bg-slate-50 border border-slate-100 p-3 text-xs">
-                <p className="font-black text-violet-700">{k}</p>
-                <p className="text-slate-500 mt-1">{v}</p>
-              </div>
-            ))}
-          </div>
-          <button onClick={createCustomWorkflow} disabled={working} className="w-full py-3 rounded-xl bg-slate-950 text-white font-bold disabled:opacity-50 flex items-center justify-center gap-2">
-            <Settings size={18} /> Criar fluxo customizado
-          </button>
-        </div>
-      </section>
 
-      <section className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 lg:p-7">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
-          <div>
-            <h2 className="text-2xl font-black text-slate-950">Executar processo</h2>
-            <p className="text-sm text-slate-500 mt-1">Escolha um fluxo, selecione um documento do DocWallet e rode extração + validação + aprovação.</p>
-          </div>
-          <button onClick={load} className="px-4 py-3 rounded-xl bg-slate-100 text-slate-700 font-semibold flex items-center gap-2"><RefreshCw size={17} /> Atualizar</button>
-        </div>
-        <div className="grid lg:grid-cols-3 gap-4">
-          <div>
-            <label className="text-sm font-semibold text-slate-700">Fluxo</label>
-            <select value={activeWorkflow?.id || ''} onChange={(e) => setSelectedWorkflowId(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3">
-              {workflows.length ? workflows.map((wf) => <option key={wf.id} value={wf.id}>{wf.name}</option>) : <option>Nenhum fluxo criado</option>}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-slate-700">Documento</label>
-            <select value={selectedDocumentId} onChange={(e) => setSelectedDocumentId(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3">
-              <option value="">Sem documento / API manual</option>
-              {documents.map((doc) => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-slate-700">Complementos</label>
-            <textarea value={answersText} onChange={(e) => setAnswersText(e.target.value)} className="mt-2 w-full h-[50px] rounded-xl border border-slate-200 px-4 py-3 text-xs" />
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3 mt-5">
-          <button onClick={startSubmission} disabled={working || !activeWorkflow} className="px-5 py-3 bg-violet-600 text-white rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+          <select value={selectedWorkflowId} onChange={(e) => setSelectedWorkflowId(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3">
+            <option value="">Selecione um fluxo</option>
+            {workflows.map((workflow) => <option key={workflow.id} value={workflow.id}>{workflow.name}</option>)}
+          </select>
+
+          <select value={selectedDocumentId} onChange={(e) => setSelectedDocumentId(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3">
+            <option value="">Sem documento vinculado / API</option>
+            {documents.map((doc) => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
+          </select>
+
+          {!documents.length && (
+            <div className="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-sm text-amber-900">
+              Nenhum documento no cofre ainda. Use Capturar documento para simular o funcionário enviando um recibo, nota ou comprovante.
+            </div>
+          )}
+
+          <textarea value={answersText} onChange={(e) => setAnswersText(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 min-h-[105px]" />
+
+          <button onClick={startSubmission} disabled={working || !activeWorkflow} className="w-full px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2">
             {working ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
-            Rodar processo
+            Enviar para aprovação
           </button>
-          <button onClick={prepareWebhook} disabled={working || !activeWorkflow} className="px-5 py-3 bg-slate-100 text-slate-800 rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2">
-            <Database size={18} /> Preparar integração ERP/Webhook
+
+          <button onClick={prepareWebhook} disabled={working || !activeWorkflow} className="w-full px-5 py-3 bg-slate-100 text-slate-800 rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+            <Database size={18} /> Preparar integração ERP/webhook segura
           </button>
         </div>
       </section>
 
-      <section className="grid lg:grid-cols-[1fr_0.9fr] gap-5">
+      <section className="grid lg:grid-cols-[1fr_1fr] gap-5">
         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 lg:p-7">
           <h2 className="text-2xl font-black text-slate-950 mb-4">Processos recentes</h2>
           <div className="space-y-3">
-            {submissions.length ? submissions.map((s) => (
-              <div key={s.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            {submissions.length ? submissions.slice(0, 8).map((submission) => (
+              <div key={submission.id} className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <p className="font-bold text-slate-900">{s.title}</p>
-                    <p className="text-sm text-slate-500">{statusLabel[s.status] || s.status} • {s.sourceType} • aprovação: {s.approvalStatus}</p>
-                    {s.validationErrors?.length > 0 && <p className="text-xs text-amber-700 mt-1">{s.validationErrors.join(' | ')}</p>}
+                    <p className="font-bold text-slate-900">{submission.title}</p>
+                    <p className="text-sm text-slate-500">{statusLabel[submission.status] || submission.status} • {submission.currentStep || 'processo'}</p>
                   </div>
-                  <div className="flex gap-2">
-                    {s.status === 'awaiting_approval' && <button onClick={() => approve(s.id)} className="px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold">Aprovar</button>}
-                    {s.status === 'awaiting_approval' && <button onClick={() => reject(s.id)} className="px-3 py-2 bg-red-500 text-white rounded-xl text-sm font-bold">Rejeitar</button>}
-                  </div>
+                  {submission.status === 'awaiting_approval' && (
+                    <div className="flex gap-2">
+                      <button onClick={() => approve(submission.id)} disabled={working} className="px-3 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold disabled:opacity-50">Aprovar</button>
+                      <button onClick={() => reject(submission.id)} disabled={working} className="px-3 py-2 bg-red-50 text-red-700 rounded-xl text-sm font-bold disabled:opacity-50">Rejeitar</button>
+                    </div>
+                  )}
                 </div>
-                {s.hash && <p className="text-[11px] text-slate-400 mt-2 break-all">SHA-256: {s.hash}</p>}
               </div>
             )) : <p className="text-sm text-slate-500">Nenhum processo criado ainda.</p>}
           </div>
         </div>
-        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 lg:p-7 space-y-5">
-          <h2 className="text-2xl font-black text-slate-950">Resultado estruturado</h2>
-          {latestSubmission ? <JsonPreview data={latestSubmission.extractedData} /> : <p className="text-sm text-slate-500">Rode um processo para ver dados extraídos e revisáveis.</p>}
-          <div className="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-950">
-            <p className="font-bold flex items-center gap-2"><ShieldCheck size={18} /> DocWallet Trust</p>
-            <p className="mt-1">Cada processo preserva arquivo original, hash, trilha de auditoria, revisão humana e integração opcional com assinatura ou registro de integridade.</p>
+
+        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 lg:p-7">
+          <h2 className="text-2xl font-black text-slate-950 mb-4">Dados estruturados</h2>
+          {latestSubmission ? <JsonPreview data={latestSubmission.extractedData || {}} /> : <p className="text-sm text-slate-500">Rode um processo para ver o JSON extraído pela inteligência documental.</p>}
+          <div className="mt-4 rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-950">
+            <p className="font-bold flex items-center gap-2"><ShieldCheck size={17} /> DocWallet Trust</p>
+            <p className="mt-1">O arquivo original fica preservado, com hash, trilha de auditoria e opção de assinatura/registro de integridade.</p>
           </div>
         </div>
       </section>
-
-      <section className="grid md:grid-cols-4 gap-4">
-        {captureCards.map(({ label, Icon }) => (
-          <div key={label} className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 text-center">
-            <Icon className="mx-auto text-violet-600 mb-3" size={30} />
-            <p className="font-bold text-slate-900">{label}</p>
-          </div>
-        ))}
-      </section>
-
-      <p className="text-xs text-slate-400 text-center">
-        Capturas habilitadas/preparadas: {capture.join(', ') || 'camera_mobile, upload_web, email_forwarding, api, batch_upload'}. Integrações externas ficam desabilitadas até configuração segura no backend.
-      </p>
     </main>
   );
 };
