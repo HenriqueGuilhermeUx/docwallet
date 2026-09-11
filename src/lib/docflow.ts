@@ -1,11 +1,14 @@
 import { requireApiUrl } from './apiBase';
-import { readSession } from './backendSession';
+import { readSession, handleAuthFailure, authExpiredMessage } from './backendSession';
 
 const api = () => requireApiUrl();
 
 const authHeaders = (json = false) => {
+  const token = readSession();
+  if (!token) throw new Error(authExpiredMessage);
+
   const key = 'Author' + 'ization';
-  const headers: Record<string, string> = { [key]: `Bearer ${readSession() || ''}` };
+  const headers: Record<string, string> = { [key]: `Bearer ${token}` };
   if (json) headers['Content-Type'] = 'application/json';
   return headers;
 };
@@ -17,6 +20,15 @@ const parseJson = async (response: Response) => {
   } catch {
     return { error: text || 'Resposta inválida do servidor.' };
   }
+};
+
+const readOrThrow = async <T>(response: Response, fallback: string, pick: (data: Record<string, any>) => T): Promise<T> => {
+  const data = await parseJson(response);
+  if (response.status === 401 || response.status === 403) {
+    throw new Error(handleAuthFailure());
+  }
+  if (!response.ok || data.success === false) throw new Error(data.error || fallback);
+  return pick(data);
 };
 
 export interface DocFlowTemplate {
@@ -87,23 +99,21 @@ export interface DocFlowDashboard {
 
 export const listDocFlowTemplates = async (): Promise<{ templates: DocFlowTemplate[]; blocks: string[]; capture: string[] }> => {
   const response = await fetch(`${api()}/api/docflow/templates`, { headers: authHeaders() });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao carregar templates DocFlow.');
-  return { templates: data.templates || [], blocks: data.blocks || [], capture: data.capture || [] };
+  return readOrThrow(response, 'Erro ao carregar templates DocFlow.', (data) => ({
+    templates: data.templates || [],
+    blocks: data.blocks || [],
+    capture: data.capture || [],
+  }));
 };
 
 export const getDocFlowDashboard = async (): Promise<DocFlowDashboard> => {
   const response = await fetch(`${api()}/api/docflow/dashboard`, { headers: authHeaders() });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao carregar DocFlow.');
-  return data as DocFlowDashboard;
+  return readOrThrow(response, 'Erro ao carregar DocFlow.', (data) => data as DocFlowDashboard);
 };
 
 export const listDocFlowWorkflows = async (): Promise<DocFlowWorkflow[]> => {
   const response = await fetch(`${api()}/api/docflow/workflows`, { headers: authHeaders() });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao listar fluxos.');
-  return data.workflows || [];
+  return readOrThrow(response, 'Erro ao listar fluxos.', (data) => data.workflows || []);
 };
 
 export const createDocFlowWorkflow = async (payload: Partial<DocFlowWorkflow> & { fields?: string[]; required?: string[] }): Promise<DocFlowWorkflow> => {
@@ -112,9 +122,7 @@ export const createDocFlowWorkflow = async (payload: Partial<DocFlowWorkflow> & 
     headers: authHeaders(true),
     body: JSON.stringify(payload),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao criar fluxo.');
-  return data.workflow;
+  return readOrThrow(response, 'Erro ao criar fluxo.', (data) => data.workflow);
 };
 
 export const createDocFlowWorkflowFromTemplate = async (templateKey: string, name?: string): Promise<DocFlowWorkflow> => {
@@ -123,9 +131,7 @@ export const createDocFlowWorkflowFromTemplate = async (templateKey: string, nam
     headers: authHeaders(true),
     body: JSON.stringify({ templateKey, name }),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao criar fluxo pelo template.');
-  return data.workflow;
+  return readOrThrow(response, 'Erro ao criar fluxo pelo template.', (data) => data.workflow);
 };
 
 export const createDocFlowSubmission = async (payload: {
@@ -141,16 +147,12 @@ export const createDocFlowSubmission = async (payload: {
     headers: authHeaders(true),
     body: JSON.stringify(payload),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao criar processo.');
-  return data.submission;
+  return readOrThrow(response, 'Erro ao criar processo.', (data) => data.submission);
 };
 
 export const listDocFlowSubmissions = async (): Promise<DocFlowSubmission[]> => {
   const response = await fetch(`${api()}/api/docflow/submissions`, { headers: authHeaders() });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao listar processos.');
-  return data.submissions || [];
+  return readOrThrow(response, 'Erro ao listar processos.', (data) => data.submissions || []);
 };
 
 export const runDocFlowSubmission = async (submissionId: string, answers?: Record<string, any>): Promise<DocFlowSubmission> => {
@@ -159,9 +161,7 @@ export const runDocFlowSubmission = async (submissionId: string, answers?: Recor
     headers: authHeaders(true),
     body: JSON.stringify({ answers: answers || {} }),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao executar processo.');
-  return data.submission;
+  return readOrThrow(response, 'Erro ao executar processo.', (data) => data.submission);
 };
 
 export const approveDocFlowSubmission = async (submissionId: string, note = 'Aprovado'): Promise<DocFlowSubmission> => {
@@ -170,9 +170,7 @@ export const approveDocFlowSubmission = async (submissionId: string, note = 'Apr
     headers: authHeaders(true),
     body: JSON.stringify({ note }),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao aprovar processo.');
-  return data.submission;
+  return readOrThrow(response, 'Erro ao aprovar processo.', (data) => data.submission);
 };
 
 export const rejectDocFlowSubmission = async (submissionId: string, note = 'Rejeitado'): Promise<DocFlowSubmission> => {
@@ -181,9 +179,7 @@ export const rejectDocFlowSubmission = async (submissionId: string, note = 'Reje
     headers: authHeaders(true),
     body: JSON.stringify({ note }),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao rejeitar processo.');
-  return data.submission;
+  return readOrThrow(response, 'Erro ao rejeitar processo.', (data) => data.submission);
 };
 
 export const createDocFlowIntegration = async (payload: { type: string; name?: string; workflowId?: string; config?: Record<string, any>; enabled?: boolean }) => {
@@ -192,7 +188,5 @@ export const createDocFlowIntegration = async (payload: { type: string; name?: s
     headers: authHeaders(true),
     body: JSON.stringify(payload),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao criar integração.');
-  return data.integration;
+  return readOrThrow(response, 'Erro ao criar integração.', (data) => data.integration);
 };
