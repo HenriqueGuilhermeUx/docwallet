@@ -1,6 +1,7 @@
 import { Document, DocumentType, Category } from '../types/document';
 import { useState, useEffect, useCallback } from 'react';
-import { BackendUser, readProfile, readSession, clearSession } from '../lib/backendSession';
+import { BackendUser, clearSession } from '../lib/backendSession';
+import { validateBackendSession } from '../lib/backendLogin';
 import {
   listBackendDocuments,
   uploadBackendDocument,
@@ -29,16 +30,28 @@ export const useDocumentsWithAuth = () => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = readProfile();
-    const savedSession = readSession();
+    let mounted = true;
 
-    if (savedUser && savedSession) {
-      setUser(savedUser);
-    } else {
-      setUser(null);
-    }
+    const initAuth = async () => {
+      const validUser = await validateBackendSession();
+      if (!mounted) return;
+      setUser(validUser);
+      if (!validUser) setIsLoading(false);
+      setIsAuthLoading(false);
+    };
 
-    setIsAuthLoading(false);
+    initAuth().catch(() => {
+      clearSession();
+      if (mounted) {
+        setUser(null);
+        setIsLoading(false);
+        setIsAuthLoading(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -49,6 +62,12 @@ export const useDocumentsWithAuth = () => {
       setIsLoading(false);
     }
   }, [user]);
+
+  const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
+    const id = generateId();
+    setToast({ id, message, type });
+    setTimeout(() => setToast(null), 4000);
+  }, []);
 
   const loadDocuments = async () => {
     if (!user) {
@@ -63,17 +82,11 @@ export const useDocumentsWithAuth = () => {
       setDocuments(docs);
     } catch (error) {
       console.error('Error loading documents:', error);
-      showToast('Erro ao carregar documentos', 'error');
+      showToast('Erro ao carregar documentos. Entre novamente se a sessão expirou.', 'error');
     } finally {
       setIsLoading(false);
     }
   };
-
-  const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
-    const id = generateId();
-    setToast({ id, message, type });
-    setTimeout(() => setToast(null), 4000);
-  }, []);
 
   const addDocument = useCallback(async (
     name: string,
