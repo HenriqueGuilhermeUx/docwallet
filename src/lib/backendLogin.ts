@@ -1,5 +1,5 @@
 import { requireApiUrl } from './apiBase';
-import { saveSession, BackendUser } from './backendSession';
+import { saveSession, BackendUser, readSession, readProfile, clearSession } from './backendSession';
 
 type AuthPayload = {
   success: boolean;
@@ -32,4 +32,32 @@ export const loginWithBackend = (email: string, password: string) => {
 
 export const registerWithBackend = (name: string, email: string, password: string) => {
   return postLogin('/api/auth/register', { name, email, password });
+};
+
+export const validateBackendSession = async (): Promise<BackendUser | null> => {
+  const session = readSession();
+  if (!session) {
+    clearSession();
+    return null;
+  }
+
+  const key = 'Author' + 'ization';
+
+  try {
+    const response = await fetch(`${requireApiUrl()}/api/auth/me`, {
+      headers: { [key]: `Bearer ${session}` },
+    });
+
+    const data = await response.json().catch(() => null) as { success?: boolean; user?: BackendUser; error?: string } | null;
+
+    if (response.status === 401 || response.status === 403 || data?.success === false || !data?.user) {
+      clearSession();
+      return null;
+    }
+
+    saveSession(session, data.user);
+    return data.user;
+  } catch {
+    return readProfile();
+  }
 };
