@@ -15,7 +15,8 @@ import {
   FileText,
   File,
   LogOut,
-  Brain
+  Brain,
+  Zap
 } from 'lucide-react';
 import { BackendUser } from '../lib/backendSession';
 
@@ -67,18 +68,17 @@ export const Header: React.FC<HeaderProps> = ({ onAddClick, user, onLogout }) =>
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-slate-800 truncate">DocWallet Docs</h1>
-              <p className="text-xs text-slate-500 truncate">inteligência e confiança documental</p>
+              <p className="text-xs text-slate-500 truncate">inteligência, processos e confiança documental</p>
             </div>
           </a>
 
           <nav className="hidden lg:flex items-center gap-5 text-sm font-semibold text-slate-600">
             <a href="/inteligencia" className="hover:text-primary inline-flex items-center gap-1"><Brain size={15} /> Inteligência</a>
+            <a href="/docflow" className="hover:text-primary inline-flex items-center gap-1"><Zap size={15} /> DocFlow</a>
             <a href="/assinaturas" className="hover:text-primary">Assinaturas</a>
             <a href="/modelos" className="hover:text-primary">Modelos</a>
             <a href="/validar-documento" className="hover:text-primary">Validar grátis</a>
             <a href="/verificar-certificado" className="hover:text-primary">Certificado</a>
-            <a href="/empresas" className="hover:text-primary">Empresas</a>
-            <a href="/api" className="hover:text-primary">API</a>
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -153,7 +153,7 @@ export const Hero: React.FC<{ documentCount: number; onAddClick: () => void }> =
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-              Documentos, inteligência e prova sob seu controle
+              Documentos, inteligência e processos sob seu controle
             </h2>
             <p className="text-indigo-100">
               {documentCount > 0
