@@ -4,6 +4,13 @@
   "releaseChannel": "play-production-candidate",
   "androidTargetApi": 36,
   "versionCodeBase": 2090000000,
-  "requestedAt": "2026-09-06T20:12:00-03:00",
-  "notes": "Trigger final AAB build with high unique versionCode after Play reported 200059 already used. Upload only this new signed AAB to a clean release."
+  "requestedAt": "2026-09-11T10:39:00-03:00",
+  "includes": [
+    "DocWallet Intelligence",
+    "DocFlow by DocWallet",
+    "DocWallet Sign",
+    "session validation fixes",
+    "mobile navigation for Intelligence and DocFlow"
+  ],
+  "notes": "Trigger AAB build after DocWallet Intelligence, DocFlow Business, signature session handling and mobile navigation updates. Upload only the latest signed AAB to a clean Play release."
 }
