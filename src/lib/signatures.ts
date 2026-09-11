@@ -1,5 +1,5 @@
 import { requireApiUrl } from './apiBase';
-import { readSession } from './backendSession';
+import { readSession, handleAuthFailure, authExpiredMessage } from './backendSession';
 
 export interface SignaturePartyInput {
   name: string;
@@ -54,11 +54,23 @@ const parseJson = async (response: Response) => {
 };
 
 const headers = () => {
+  const token = readSession();
+  if (!token) throw new Error(authExpiredMessage);
+
   const key = 'Author' + 'ization';
   return {
-    [key]: `Bearer ${readSession() || ''}`,
+    [key]: `Bearer ${token}`,
     'Content-Type': 'application/json',
   } as Record<string, string>;
+};
+
+const readOrThrow = async <T>(response: Response, fallback: string, pick: (data: Record<string, any>) => T): Promise<T> => {
+  const data = await parseJson(response);
+  if (response.status === 401 || response.status === 403) {
+    throw new Error(handleAuthFailure());
+  }
+  if (!response.ok || data.success === false) throw new Error(data.error || fallback);
+  return pick(data);
 };
 
 export const getPublicAppUrl = () => {
@@ -77,11 +89,7 @@ export const listSignatureRequests = async (): Promise<SignatureRequest[]> => {
   const response = await fetch(`${requireApiUrl()}/api/signatures`, {
     headers: headers(),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) {
-    throw new Error(data.error || 'Erro ao carregar assinaturas.');
-  }
-  return (data.requests || []) as SignatureRequest[];
+  return readOrThrow(response, 'Erro ao carregar assinaturas.', (data) => (data.requests || []) as SignatureRequest[]);
 };
 
 export const createSignatureRequest = async (params: {
@@ -99,34 +107,21 @@ export const createSignatureRequest = async (params: {
     }),
   });
 
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) {
-    throw new Error(data.error || 'Erro ao criar solicitação de assinatura.');
-  }
-
-  return data.request as SignatureRequest;
+  return readOrThrow(response, 'Erro ao criar solicitação de assinatura.', (data) => data.request as SignatureRequest);
 };
 
 export const readSignatureRequest = async (requestId: string): Promise<{ request: SignatureRequest; contract_content: string }> => {
   const response = await fetch(`${requireApiUrl()}/api/signatures/${requestId}`, {
     headers: headers(),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) {
-    throw new Error(data.error || 'Erro ao carregar assinatura.');
-  }
-  return { request: data.request as SignatureRequest, contract_content: data.contract_content };
+  return readOrThrow(response, 'Erro ao carregar assinatura.', (data) => ({ request: data.request as SignatureRequest, contract_content: data.contract_content }));
 };
 
 export const readSignatureEvidence = async (requestId: string): Promise<{ evidence: SignatureEvidence; contract_content: string }> => {
   const response = await fetch(`${requireApiUrl()}/api/signatures/${requestId}/evidence`, {
     headers: headers(),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) {
-    throw new Error(data.error || 'Erro ao carregar evidências.');
-  }
-  return { evidence: data.evidence as SignatureEvidence, contract_content: data.contract_content || '' };
+  return readOrThrow(response, 'Erro ao carregar evidências.', (data) => ({ evidence: data.evidence as SignatureEvidence, contract_content: data.contract_content || '' }));
 };
 
 export const createSignatureReminder = async (requestId: string, partyId?: string): Promise<{ party: SignatureParty; url: string; message: string }> => {
@@ -135,11 +130,7 @@ export const createSignatureReminder = async (requestId: string, partyId?: strin
     headers: headers(),
     body: JSON.stringify({ party_id: partyId || '' }),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) {
-    throw new Error(data.error || 'Erro ao criar lembrete.');
-  }
-  return { party: data.party as SignatureParty, url: data.url, message: data.message };
+  return readOrThrow(response, 'Erro ao criar lembrete.', (data) => ({ party: data.party as SignatureParty, url: data.url, message: data.message }));
 };
 
 export const cancelSignatureRequest = async (requestId: string): Promise<SignatureRequest> => {
@@ -148,11 +139,7 @@ export const cancelSignatureRequest = async (requestId: string): Promise<Signatu
     headers: headers(),
     body: JSON.stringify({}),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) {
-    throw new Error(data.error || 'Erro ao cancelar assinatura.');
-  }
-  return data.request as SignatureRequest;
+  return readOrThrow(response, 'Erro ao cancelar assinatura.', (data) => data.request as SignatureRequest);
 };
 
 export const readPublicSignature = async (code: string) => {
