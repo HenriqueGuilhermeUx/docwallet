@@ -1,11 +1,14 @@
 import { requireApiUrl } from './apiBase';
-import { readSession } from './backendSession';
+import { readSession, handleAuthFailure, authExpiredMessage } from './backendSession';
 
 const api = () => requireApiUrl();
 
 const authHeaders = (json = false) => {
+  const token = readSession();
+  if (!token) throw new Error(authExpiredMessage);
+
   const key = 'Author' + 'ization';
-  const headers: Record<string, string> = { [key]: `Bearer ${readSession() || ''}` };
+  const headers: Record<string, string> = { [key]: `Bearer ${token}` };
   if (json) headers['Content-Type'] = 'application/json';
   return headers;
 };
@@ -17,6 +20,15 @@ const parseJson = async (response: Response) => {
   } catch {
     return { error: text || 'Resposta inválida do servidor.' };
   }
+};
+
+const readOrThrow = async <T>(response: Response, fallback: string, pick: (data: Record<string, any>) => T): Promise<T> => {
+  const data = await parseJson(response);
+  if (response.status === 401 || response.status === 403) {
+    throw new Error(handleAuthFailure());
+  }
+  if (!response.ok || data.success === false) throw new Error(data.error || fallback);
+  return pick(data);
 };
 
 export type IntelligenceDocumentType =
@@ -137,18 +149,14 @@ export const analyzeDocument = async (documentId: string): Promise<DocumentIntel
     headers: authHeaders(true),
     body: JSON.stringify({}),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao analisar documento.');
-  return data.intelligence as DocumentIntelligence;
+  return readOrThrow(response, 'Erro ao analisar documento.', (data) => data.intelligence as DocumentIntelligence);
 };
 
 export const getDocumentIntelligence = async (documentId: string, includeRaw = false): Promise<DocumentIntelligence | null> => {
   const response = await fetch(`${api()}/api/documents/${documentId}/intelligence?include_raw=${includeRaw ? 'true' : 'false'}`, {
     headers: authHeaders(),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao carregar inteligência.');
-  return data.intelligence as DocumentIntelligence | null;
+  return readOrThrow(response, 'Erro ao carregar inteligência.', (data) => data.intelligence as DocumentIntelligence | null);
 };
 
 export const updateDocumentIntelligence = async (documentId: string, payload: Partial<DocumentIntelligence>): Promise<DocumentIntelligence> => {
@@ -157,45 +165,33 @@ export const updateDocumentIntelligence = async (documentId: string, payload: Pa
     headers: authHeaders(true),
     body: JSON.stringify(payload),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao revisar inteligência.');
-  return data.intelligence as DocumentIntelligence;
+  return readOrThrow(response, 'Erro ao revisar inteligência.', (data) => data.intelligence as DocumentIntelligence);
 };
 
 export const getDocumentAlerts = async (documentId: string): Promise<IntelligenceAlert[]> => {
   const response = await fetch(`${api()}/api/documents/${documentId}/alerts`, { headers: authHeaders() });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao carregar alertas.');
-  return (data.alerts || []) as IntelligenceAlert[];
+  return readOrThrow(response, 'Erro ao carregar alertas.', (data) => (data.alerts || []) as IntelligenceAlert[]);
 };
 
 export const getDocumentAuditTrail = async (documentId: string): Promise<any[]> => {
   const response = await fetch(`${api()}/api/documents/${documentId}/audit-trail`, { headers: authHeaders() });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao carregar atividade.');
-  return data.events || [];
+  return readOrThrow(response, 'Erro ao carregar atividade.', (data) => data.events || []);
 };
 
 export const getIntelligenceDashboard = async (): Promise<IntelligenceDashboard> => {
   const response = await fetch(`${api()}/api/intelligence/dashboard`, { headers: authHeaders() });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao carregar dashboard de inteligência.');
-  return data as IntelligenceDashboard;
+  return readOrThrow(response, 'Erro ao carregar dashboard de inteligência.', (data) => data as IntelligenceDashboard);
 };
 
 export const searchIntelligence = async (query: string, days = 60): Promise<any[]> => {
   const params = new URLSearchParams({ q: query, days: String(days) });
   const response = await fetch(`${api()}/api/documents/search?${params.toString()}`, { headers: authHeaders() });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao buscar documentos.');
-  return data.results || [];
+  return readOrThrow(response, 'Erro ao buscar documentos.', (data) => data.results || []);
 };
 
 export const getUpcomingExpirations = async (days = 60): Promise<IntelligenceAlert[]> => {
   const response = await fetch(`${api()}/api/contracts/upcoming-expirations?days=${days}`, { headers: authHeaders() });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao carregar vencimentos.');
-  return data.alerts || [];
+  return readOrThrow(response, 'Erro ao carregar vencimentos.', (data) => data.alerts || []);
 };
 
 export const createDocumentSignatureRequest = async (
@@ -207,7 +203,5 @@ export const createDocumentSignatureRequest = async (
     headers: authHeaders(true),
     body: JSON.stringify(payload),
   });
-  const data = await parseJson(response);
-  if (!response.ok || data.success === false) throw new Error(data.error || 'Erro ao criar assinatura do documento.');
-  return data.request;
+  return readOrThrow(response, 'Erro ao criar assinatura do documento.', (data) => data.request);
 };
