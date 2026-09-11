@@ -1,36 +1,46 @@
-import { ArrowRight, Brain, CheckCircle, FileCheck, FileSignature, Shield, Wallet } from 'lucide-react';
+import { ArrowRight, CheckCircle, FileCheck, FileSignature, Shield, Wallet, Brain, Zap, Building2 } from 'lucide-react';
 
 const features = [
-  {
-    icon: Brain,
-    title: 'Inteligência documental',
-    description: 'Classifique documentos e extraia resumo, partes, datas, valores, obrigações e alertas.',
-  },
   {
     icon: Wallet,
     title: 'Cofre digital',
     description: 'Guarde documentos, comprovantes, contratos e arquivos importantes em uma conta simples.',
   },
   {
+    icon: Brain,
+    title: 'DocWallet Intelligence',
+    description: 'Entenda o que existe dentro do documento: partes, datas, valores, prazos, obrigações e alertas.',
+  },
+  {
+    icon: Zap,
+    title: 'DocFlow Business',
+    description: 'Transforme documentos em processos configuráveis, aprovações e integrações B2B.',
+  },
+  {
     icon: FileSignature,
     title: 'Assinaturas',
-    description: 'Envie documentos para assinatura eletrônica com evidências, status e trilha de auditoria.',
+    description: 'Envie documentos para assinatura, acompanhe pendências e baixe evidências digitais.',
   },
   {
     icon: FileCheck,
-    title: 'Integridade verificável',
-    description: 'Preserve hash SHA-256, versões, certificado e prova de integridade quando precisar comprovar um arquivo.',
+    title: 'Validação por hash',
+    description: 'Calcule o SHA-256 e consulte certificados de integridade quando precisar comprovar um arquivo.',
+  },
+  {
+    icon: Shield,
+    title: 'Digital Trust',
+    description: 'Preserve arquivo original, versões, trilha de auditoria e prova técnica de integridade.',
   },
 ];
 
 export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
   return (
-    <main className="max-w-5xl mx-auto px-4 py-8 sm:py-12">
+    <main className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
       <section className="bg-white rounded-[2rem] border border-slate-100 shadow-card overflow-hidden">
-        <div className="grid lg:grid-cols-[1fr_0.8fr] gap-8 p-7 sm:p-10 lg:p-12 items-center">
+        <div className="grid lg:grid-cols-[1fr_0.85fr] gap-8 p-7 sm:p-10 lg:p-12 items-center">
           <div>
             <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-semibold mb-5">
-              <Shield size={16} /> Document Intelligence + Digital Trust
+              <Brain size={16} /> Document Intelligence + Digital Trust
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight text-slate-950">
@@ -38,7 +48,7 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
             </h1>
 
             <p className="text-slate-600 mt-5 text-base sm:text-lg leading-relaxed max-w-2xl">
-              Organize documentos, extraia informações importantes, acompanhe prazos, colete assinaturas e preserve prova de integridade com hash e evidências digitais.
+              Guarde arquivos, crie contratos, colete assinaturas, extraia dados importantes e transforme documentos em processos com o DocFlow by DocWallet.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 mt-7">
@@ -55,10 +65,10 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
                 Ver inteligência
               </a>
               <a
-                href="/validar-documento"
-                className="px-7 py-3 bg-slate-100 text-slate-800 rounded-full font-bold hover:bg-slate-200 transition-colors text-center"
+                href="/docflow"
+                className="px-7 py-3 bg-violet-600 text-white rounded-full font-bold hover:bg-violet-700 transition-colors text-center"
               >
-                Validar grátis
+                DocFlow Business
               </a>
             </div>
 
@@ -70,16 +80,16 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
           <div className="bg-slate-950 text-white rounded-[1.7rem] p-6 shadow-xl">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <p className="text-sm text-slate-400">DocWallet Intelligence</p>
-                <p className="text-2xl font-black">Contrato analisado</p>
+                <p className="text-sm text-slate-400">DocFlow by DocWallet</p>
+                <p className="text-2xl font-black">Foto → processo</p>
               </div>
-              <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center">
-                <Brain size={24} />
+              <div className="w-12 h-12 bg-violet-600 rounded-2xl flex items-center justify-center">
+                <Zap size={24} />
               </div>
             </div>
 
             <div className="space-y-3">
-              {['Vence em 27 dias', 'Renovação automática', 'Multa identificada', 'Falta 1 assinatura'].map((item) => (
+              {['Recibo recebido', 'Dados extraídos', 'Gestor aprovou', 'Financeiro notificado', 'Comprovante arquivado'].map((item) => (
                 <div key={item} className="flex items-center gap-3 bg-white/10 border border-white/10 rounded-2xl p-4">
                   <CheckCircle className="text-emerald-400" size={19} />
                   <span className="font-semibold text-sm">{item}</span>
@@ -90,7 +100,20 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
         </div>
       </section>
 
-      <section className="grid md:grid-cols-4 gap-4 mt-6">
+      <section className="mt-6 bg-slate-950 text-white rounded-[2rem] p-6 lg:p-8 grid lg:grid-cols-[0.8fr_1.2fr] gap-5 items-center">
+        <div>
+          <div className="inline-flex items-center gap-2 text-violet-200 font-bold text-sm"><Building2 size={16} /> DOCFLOW BY DOCWALLET</div>
+          <h2 className="text-2xl lg:text-3xl font-black mt-3">Transforme documentos em processos.</h2>
+          <p className="text-slate-300 mt-3 text-sm leading-relaxed">Não venda OCR. Venda o fim da digitação manual: fotografe, confirme e o processo continua sozinho.</p>
+        </div>
+        <div className="grid sm:grid-cols-4 gap-2 text-xs">
+          {['QUANDO documento recebido', 'EXTRAIR valor/data/fornecedor', 'PEDIR centro de custo', 'ENTÃO aprovar + integrar'].map((item) => (
+            <div key={item} className="bg-white/10 border border-white/10 rounded-2xl p-3 font-semibold">{item}</div>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid md:grid-cols-3 gap-4 mt-6">
         {features.map((feature) => {
           const Icon = feature.icon;
           return (
@@ -106,7 +129,7 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
       <section className="mt-6 bg-slate-50 border border-slate-200 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="font-bold text-slate-900">Já tem uma conta?</h2>
-          <p className="text-sm text-slate-600 mt-1">Entre para acessar documentos, contratos, assinaturas, alertas e certificados.</p>
+          <p className="text-sm text-slate-600 mt-1">Entre para acessar documentos, inteligência, DocFlow, assinaturas, contratos e certificados.</p>
         </div>
         <button
           onClick={onStart}
