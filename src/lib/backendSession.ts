@@ -30,3 +30,12 @@ export const clearSession = () => {
   window.localStorage.removeItem(KEY_A);
   window.localStorage.removeItem(KEY_B);
 };
+
+export const hasSession = () => Boolean(readSession());
+
+export const authExpiredMessage = 'Sua sessão expirou ou o login antigo perdeu validade. Entre novamente para continuar.';
+
+export const handleAuthFailure = () => {
+  clearSession();
+  return authExpiredMessage;
+};
