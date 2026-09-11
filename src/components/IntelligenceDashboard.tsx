@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Brain, CalendarClock, FileSearch, Loader2, RefreshCw, Search, ShieldCheck, Signature, WalletCards } from 'lucide-react';
+import { AlertTriangle, Brain, CalendarClock, FileSearch, FileSignature, Loader2, RefreshCw, Search, ShieldCheck, WalletCards } from 'lucide-react';
 import { Document } from '../types/document';
 import { analyzeDocument, getIntelligenceDashboard, IntelligenceDashboard as DashboardData, searchIntelligence } from '../lib/intelligence';
 import { BackendUser } from '../lib/backendSession';
@@ -122,7 +122,7 @@ export const IntelligenceDashboard: React.FC<Props> = ({ user, documents, onLogi
         <MetricCard label="Documentos analisados" value={m.documentsAnalyzed} icon={<Brain size={23} />} />
         <MetricCard label="Contratos ativos" value={m.activeContracts} icon={<ShieldCheck size={23} />} />
         <MetricCard label="Vencendo em 30 dias" value={m.expiringIn30Days} icon={<CalendarClock size={23} />} />
-        <MetricCard label="Assinaturas pendentes" value={m.pendingSignatures} icon={<Signature size={23} />} />
+        <MetricCard label="Assinaturas pendentes" value={m.pendingSignatures} icon={<FileSignature size={23} />} />
         <MetricCard label="Documentos com alerta" value={m.documentsWithAlerts} icon={<AlertTriangle size={23} />} />
       </section>
 
