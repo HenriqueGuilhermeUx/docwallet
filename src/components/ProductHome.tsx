@@ -1,6 +1,11 @@
-import { ArrowRight, CheckCircle, FileCheck, FileSignature, Shield, Wallet } from 'lucide-react';
+import { ArrowRight, Brain, CheckCircle, FileCheck, FileSignature, Shield, Wallet } from 'lucide-react';
 
 const features = [
+  {
+    icon: Brain,
+    title: 'Inteligência documental',
+    description: 'Classifique documentos e extraia resumo, partes, datas, valores, obrigações e alertas.',
+  },
   {
     icon: Wallet,
     title: 'Cofre digital',
@@ -9,12 +14,12 @@ const features = [
   {
     icon: FileSignature,
     title: 'Assinaturas',
-    description: 'Envie documentos para assinatura, acompanhe pendências e baixe evidências digitais.',
+    description: 'Envie documentos para assinatura eletrônica com evidências, status e trilha de auditoria.',
   },
   {
     icon: FileCheck,
-    title: 'Validação por hash',
-    description: 'Calcule o SHA-256 e consulte certificados de integridade quando precisar comprovar um arquivo.',
+    title: 'Integridade verificável',
+    description: 'Preserve hash SHA-256, versões, certificado e prova de integridade quando precisar comprovar um arquivo.',
   },
 ];
 
@@ -25,15 +30,15 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
         <div className="grid lg:grid-cols-[1fr_0.8fr] gap-8 p-7 sm:p-10 lg:p-12 items-center">
           <div>
             <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-semibold mb-5">
-              <Shield size={16} /> Documentos, assinaturas e evidências digitais
+              <Shield size={16} /> Document Intelligence + Digital Trust
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight text-slate-950">
-              Envie documentos, colete assinaturas e registre evidências.
+              Seu documento não fica apenas guardado. O DocWallet entende o que existe dentro dele.
             </h1>
 
             <p className="text-slate-600 mt-5 text-base sm:text-lg leading-relaxed max-w-2xl">
-              O DocWallet Docs ajuda você a guardar arquivos, criar contratos simples, acompanhar quem assinou e manter prova técnica de integridade.
+              Organize documentos, extraia informações importantes, acompanhe prazos, colete assinaturas e preserve prova de integridade com hash e evidências digitais.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 mt-7">
@@ -44,10 +49,10 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
                 Entrar ou criar conta
               </button>
               <a
-                href="/assinaturas"
+                href="/inteligencia"
                 className="px-7 py-3 bg-slate-950 text-white rounded-full font-bold hover:bg-slate-800 transition-colors text-center"
               >
-                Criar assinatura
+                Ver inteligência
               </a>
               <a
                 href="/validar-documento"
@@ -58,25 +63,25 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
             </div>
 
             <p className="text-xs text-slate-400 mt-5">
-              Não substitui cartório, consultoria jurídica ou assinatura qualificada ICP-Brasil.
+              Apoio informacional. Não substitui cartório, consultoria jurídica ou assinatura qualificada ICP-Brasil.
             </p>
           </div>
 
           <div className="bg-slate-950 text-white rounded-[1.7rem] p-6 shadow-xl">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <p className="text-sm text-slate-400">Fluxo de assinatura</p>
-                <p className="text-2xl font-black">2/3 concluídas</p>
+                <p className="text-sm text-slate-400">DocWallet Intelligence</p>
+                <p className="text-2xl font-black">Contrato analisado</p>
               </div>
               <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center">
-                <FileSignature size={24} />
+                <Brain size={24} />
               </div>
             </div>
 
             <div className="space-y-3">
-              {['Ana assinou', 'Carlos assinou', 'Juliana pendente', 'Evidências prontas'].map((item, index) => (
+              {['Vence em 27 dias', 'Renovação automática', 'Multa identificada', 'Falta 1 assinatura'].map((item) => (
                 <div key={item} className="flex items-center gap-3 bg-white/10 border border-white/10 rounded-2xl p-4">
-                  <CheckCircle className={index === 2 ? 'text-amber-300' : 'text-emerald-400'} size={19} />
+                  <CheckCircle className="text-emerald-400" size={19} />
                   <span className="font-semibold text-sm">{item}</span>
                 </div>
               ))}
@@ -85,7 +90,7 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
         </div>
       </section>
 
-      <section className="grid md:grid-cols-3 gap-4 mt-6">
+      <section className="grid md:grid-cols-4 gap-4 mt-6">
         {features.map((feature) => {
           const Icon = feature.icon;
           return (
@@ -101,7 +106,7 @@ export const ProductHome: React.FC<{ onStart: () => void }> = ({ onStart }) => {
       <section className="mt-6 bg-slate-50 border border-slate-200 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="font-bold text-slate-900">Já tem uma conta?</h2>
-          <p className="text-sm text-slate-600 mt-1">Entre para acessar documentos, assinaturas, contratos e certificados.</p>
+          <p className="text-sm text-slate-600 mt-1">Entre para acessar documentos, contratos, assinaturas, alertas e certificados.</p>
         </div>
         <button
           onClick={onStart}
