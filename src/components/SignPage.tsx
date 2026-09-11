@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle, Copy, FileSignature, Loader2, Send, Shield, Wallet } from 'lucide-react';
-import { acceptSignature, readPublicSignature } from '../lib/signatures';
+import { AlertCircle, CheckCircle, Copy, FileSignature, KeyRound, Loader2, Send, Shield, Wallet } from 'lucide-react';
+import { acceptSignature, publicSignPathToUrl, readPublicSignature } from '../lib/signatures';
+import { getIcpSignatureConfig, IcpSignatureConfig, IcpSignatureSession, startPublicIcpSignature } from '../lib/icpSignature';
 
 type NextParty = {
   name: string;
@@ -28,6 +29,11 @@ export const SignPage: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [accepted, setAccepted] = useState(false);
+  const [icpAccepted, setIcpAccepted] = useState(false);
+  const [icpConfig, setIcpConfig] = useState<IcpSignatureConfig | null>(null);
+  const [icpSession, setIcpSession] = useState<IcpSignatureSession | null>(null);
+  const [icpLoading, setIcpLoading] = useState(false);
+  const [icpNotice, setIcpNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -42,8 +48,12 @@ export const SignPage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const loaded = await readPublicSignature(code);
+        const [loaded, config] = await Promise.all([
+          readPublicSignature(code),
+          getIcpSignatureConfig().catch(() => null),
+        ]);
         setData(loaded);
+        setIcpConfig(config);
         setName(loaded.party?.name || '');
         setEmail(loaded.party?.email || '');
       } catch (err: any) {
@@ -70,7 +80,27 @@ export const SignPage: React.FC = () => {
     }
   };
 
-  const nextPartyUrl = nextParty ? `${window.location.origin}${nextParty.url}` : '';
+  const handleIcpSign = async () => {
+    setError('');
+    setIcpNotice('');
+    setIcpLoading(true);
+    try {
+      const result = await startPublicIcpSignature(code);
+      setIcpConfig(result.config);
+      setIcpSession(result.session);
+      if (result.session.redirectUrl) {
+        window.location.href = result.session.redirectUrl;
+        return;
+      }
+      setIcpNotice(result.session.metadata?.message as string || result.config.statusMessage || 'Assinatura ICP-Brasil preparada. Configure o provider para assinar com certificado digital.');
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao iniciar assinatura ICP-Brasil.');
+    } finally {
+      setIcpLoading(false);
+    }
+  };
+
+  const nextPartyUrl = nextParty ? publicSignPathToUrl(nextParty.url) : '';
 
   const copyNextLink = async () => {
     if (!nextPartyUrl) return;
@@ -110,6 +140,7 @@ export const SignPage: React.FC = () => {
 
   const alreadySigned = data?.party?.status === 'signed' || success;
   const completed = data?.request?.status === 'completed';
+  const icpReady = Boolean(icpConfig?.configured && icpConfig?.enabled);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -187,8 +218,28 @@ export const SignPage: React.FC = () => {
               {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">{error}</div>}
               <button onClick={handleAccept} disabled={!accepted || !name || submitting} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
                 {submitting ? <Loader2 className="animate-spin" size={18} /> : <Shield size={18} />}
-                Assinar eletronicamente
+                Assinar eletronicamente com evidências
               </button>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-start gap-3">
+                  <KeyRound className="text-slate-700 mt-0.5" size={20} />
+                  <div>
+                    <p className="font-bold text-slate-900">Assinar com certificado digital ICP-Brasil</p>
+                    <p className="text-xs text-slate-500 mt-1">{icpConfig?.safeLabel || 'Assinatura qualificada depende de certificado digital ICP-Brasil e provider configurado.'}</p>
+                  </div>
+                </div>
+                <label className="mt-3 flex gap-3 text-sm text-slate-600"><input type="checkbox" checked={icpAccepted} onChange={(e) => setIcpAccepted(e.target.checked)} /> Entendo que a assinatura qualificada depende do meu certificado digital ICP-Brasil.</label>
+                <button onClick={handleIcpSign} disabled={!icpAccepted || icpLoading} className={`mt-3 w-full py-3 rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2 ${icpReady ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-white text-slate-700 border border-slate-200'}`}>
+                  {icpLoading ? <Loader2 className="animate-spin" size={18} /> : <KeyRound size={18} />}
+                  {icpReady ? 'Assinar com certificado digital' : 'Preparar assinatura ICP-Brasil'}
+                </button>
+                {(icpNotice || icpSession) && (
+                  <div className="mt-3 rounded-lg bg-amber-50 border border-amber-100 p-3 text-xs text-amber-800">
+                    {icpNotice || icpSession?.metadata?.message as string || 'Provider ICP-Brasil ainda não configurado.'}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </aside>
