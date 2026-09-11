@@ -17,7 +17,6 @@ import {
   Settings,
   ShieldCheck,
   Upload,
-  Users,
   Zap,
 } from 'lucide-react';
 import { BackendUser } from '../lib/backendSession';
@@ -31,7 +30,6 @@ import {
   DocFlowDashboard,
   DocFlowSubmission,
   DocFlowTemplate,
-  DocFlowWorkflow,
   getDocFlowDashboard,
   listDocFlowSubmissions,
   listDocFlowTemplates,
@@ -78,11 +76,18 @@ const Metric: React.FC<{ label: string; value: number | string; icon: React.Reac
   </div>
 );
 
-const JsonPreview: React.FC<{ data: Record<string, any> }> = ({ data }) => (
+const JsonPreview: React.FC<{ data: Record<string, unknown> }> = ({ data }) => (
   <pre className="text-xs bg-slate-950 text-slate-100 rounded-2xl p-4 overflow-auto max-h-64 whitespace-pre-wrap">
     {JSON.stringify(data || {}, null, 2)}
   </pre>
 );
+
+const captureCards = [
+  { label: 'Câmera mobile', Icon: Camera },
+  { label: 'Upload web', Icon: Upload },
+  { label: 'Email forwarding', Icon: Mail },
+  { label: 'API / batch', Icon: FileText },
+];
 
 export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin, onAddDocument }) => {
   const [dashboard, setDashboard] = useState<DocFlowDashboard | null>(null);
@@ -103,6 +108,7 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
   const workflows = dashboard?.workflows || [];
   const activeWorkflow = useMemo(() => workflows.find((w) => w.id === selectedWorkflowId) || workflows[0], [workflows, selectedWorkflowId]);
   const latestSubmission = submissions[0];
+  const metrics = dashboard?.metrics || { documentsReceived: 0, processed: 0, pending: 0, awaitingApproval: 0, rejected: 0, completed: 0, timeSavedMinutes: 0, averageProcessingMinutes: 0, users: 0, workflows: 0 };
 
   const load = async () => {
     if (!user) return;
@@ -119,8 +125,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       setDashboard(dash);
       setSubmissions(subs);
       if (!selectedWorkflowId && dash.workflows[0]) setSelectedWorkflowId(dash.workflows[0].id);
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao carregar DocFlow.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar DocFlow.');
     } finally {
       setLoading(false);
     }
@@ -148,8 +154,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       setNotice(`Fluxo criado: ${workflow.name}`);
       setSelectedWorkflowId(workflow.id);
       await load();
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao criar fluxo.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar fluxo.');
     } finally {
       setWorking(false);
     }
@@ -179,8 +185,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       setNotice(`Fluxo customizado criado: ${workflow.name}`);
       setSelectedWorkflowId(workflow.id);
       await load();
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao criar fluxo customizado.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar fluxo customizado.');
     } finally {
       setWorking(false);
     }
@@ -206,8 +212,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       const processed = await runDocFlowSubmission(submission.id, parseAnswers());
       setNotice(`Processo criado: ${statusLabel[processed.status] || processed.status}`);
       await load();
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao iniciar processo.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao iniciar processo.');
     } finally {
       setWorking(false);
     }
@@ -220,8 +226,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       await approveDocFlowSubmission(submissionId, 'Aprovado pelo gestor');
       setNotice('Processo aprovado.');
       await load();
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao aprovar.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao aprovar.');
     } finally {
       setWorking(false);
     }
@@ -234,8 +240,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       await rejectDocFlowSubmission(submissionId, 'Rejeitado para correção');
       setNotice('Processo rejeitado.');
       await load();
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao rejeitar.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao rejeitar.');
     } finally {
       setWorking(false);
     }
@@ -254,8 +260,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
         config: { url: 'https://erp.exemplo.com/webhook', mode: 'disabled_until_review' },
       });
       setNotice('Integração criada em modo seguro/desabilitado. Nenhum dado foi enviado para fora.');
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao preparar integração.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao preparar integração.');
     } finally {
       setWorking(false);
     }
@@ -277,8 +283,6 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       </main>
     );
   }
-
-  const metrics = dashboard?.metrics || { documentsReceived: 0, processed: 0, pending: 0, awaitingApproval: 0, rejected: 0, completed: 0, timeSavedMinutes: 0, averageProcessingMinutes: 0, users: 0, workflows: 0 };
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
@@ -328,7 +332,7 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
             {templates.map((tpl) => <option key={tpl.key} value={tpl.key}>{tpl.name}</option>)}
           </select>
           <div className="space-y-3 max-h-72 overflow-auto">
-            {templates.slice(0, 13).map((tpl) => (
+            {templates.map((tpl) => (
               <button key={tpl.key} onClick={() => setSelectedTemplate(tpl.key)} className={`w-full text-left rounded-2xl border p-4 transition-colors ${selectedTemplate === tpl.key ? 'border-violet-300 bg-violet-50' : 'border-slate-100 bg-slate-50 hover:bg-slate-100'}`}>
                 <p className="font-bold text-slate-900">{tpl.name}</p>
                 <p className="text-sm text-slate-500 mt-1">{tpl.description}</p>
@@ -433,10 +437,10 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       </section>
 
       <section className="grid md:grid-cols-4 gap-4">
-        {[['Câmera mobile', Camera], ['Upload web', Upload], ['Email forwarding', Mail], ['API / batch', FileText]].map(([label, Icon]) => (
-          <div key={String(label)} className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 text-center">
+        {captureCards.map(({ label, Icon }) => (
+          <div key={label} className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 text-center">
             <Icon className="mx-auto text-violet-600 mb-3" size={30} />
-            <p className="font-bold text-slate-900">{String(label)}</p>
+            <p className="font-bold text-slate-900">{label}</p>
           </div>
         ))}
       </section>
