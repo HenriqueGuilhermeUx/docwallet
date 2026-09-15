@@ -32,6 +32,7 @@ import { CertificateHistoryPanel } from './components/CertificateHistoryPanel';
 import { SignaturesPage } from './components/SignaturesPage';
 import { IntelligenceDashboard } from './components/IntelligenceDashboard';
 import { DocFlowBusinessPage } from './components/DocFlowBusinessPage';
+import { NexOfficeConnectFlow } from './components/NexOfficeConnectFlow';
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
@@ -212,6 +213,8 @@ function App() {
         user={user}
         onLogout={handleHeaderAction}
       />
+
+      <NexOfficeConnectFlow user={user} onLogin={() => setShowAuthModal(true)} />
 
       {!user ? (
         <ProductHome onStart={() => setShowAuthModal(true)} />
