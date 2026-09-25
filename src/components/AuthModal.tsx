@@ -50,7 +50,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
       handleClose();
       onSuccess();
-      window.location.reload();
     } catch (err: any) {
       setError(err.message || 'Erro ao autenticar. Tente novamente.');
     } finally {

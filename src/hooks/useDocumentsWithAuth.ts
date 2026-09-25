@@ -1,6 +1,6 @@
 import { Document, DocumentType, Category } from '../types/document';
 import { useState, useEffect, useCallback } from 'react';
-import { BackendUser, clearSession } from '../lib/backendSession';
+import { BackendUser, clearSession, readProfile, SESSION_CHANGE_EVENT } from '../lib/backendSession';
 import { validateBackendSession } from '../lib/backendLogin';
 import {
   listBackendDocuments,
@@ -21,29 +21,45 @@ const generateId = (): string => {
 };
 
 export const useDocumentsWithAuth = () => {
-  const [user, setUser] = useState<BackendUser | null>(null);
+  const cachedProfile = readProfile();
+  const [user, setUser] = useState<BackendUser | null>(cachedProfile);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<Toast | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  // When we already have a cached profile, keep the shell visible and validate
+  // the token in the background. This avoids the "logged out" flash on every
+  // internal page navigation while still clearing the session on a real 401.
+  const [isAuthLoading, setIsAuthLoading] = useState(!cachedProfile);
 
   useEffect(() => {
     let mounted = true;
 
+    const syncFromStorage = (event?: Event) => {
+      if (!mounted) return;
+      const detail = event instanceof CustomEvent ? event.detail as BackendUser | null : undefined;
+      setUser(detail === undefined ? readProfile() : detail);
+      setIsAuthLoading(false);
+    };
+
+    window.addEventListener(SESSION_CHANGE_EVENT, syncFromStorage as EventListener);
+    window.addEventListener('storage', syncFromStorage);
+
     const initAuth = async () => {
       const validUser = await validateBackendSession();
       if (!mounted) return;
-      setUser(validUser);
-      if (!validUser) setIsLoading(false);
+      setUser(validUser || readProfile());
+      if (!validUser && !readProfile()) setIsLoading(false);
       setIsAuthLoading(false);
     };
 
     initAuth().catch(() => {
-      clearSession();
       if (mounted) {
-        setUser(null);
+        // A transient backend/network failure is not a logout condition.
+        // Keep the locally cached session profile and let the next API call
+        // determine whether the token is genuinely invalid.
+        setUser(readProfile());
         setIsLoading(false);
         setIsAuthLoading(false);
       }
@@ -51,6 +67,8 @@ export const useDocumentsWithAuth = () => {
 
     return () => {
       mounted = false;
+      window.removeEventListener(SESSION_CHANGE_EVENT, syncFromStorage as EventListener);
+      window.removeEventListener('storage', syncFromStorage);
     };
   }, []);
 
@@ -61,7 +79,7 @@ export const useDocumentsWithAuth = () => {
       setDocuments([]);
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
     const id = generateId();
@@ -80,9 +98,9 @@ export const useDocumentsWithAuth = () => {
     try {
       const docs = await listBackendDocuments();
       setDocuments(docs);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading documents:', error);
-      showToast('Erro ao carregar documentos. Entre novamente se a sessão expirou.', 'error');
+      showToast(error?.message || 'Não foi possível carregar os documentos agora. Sua sessão foi preservada.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -195,6 +213,12 @@ export const useDocumentsWithAuth = () => {
     }
   };
 
+  const refreshAuth = async () => {
+    const next = await validateBackendSession().catch(() => readProfile());
+    setUser(next || readProfile());
+    return next;
+  };
+
   return {
     user,
     documents: filteredDocuments,
@@ -213,5 +237,6 @@ export const useDocumentsWithAuth = () => {
     isLoading,
     isAuthLoading,
     reloadDocuments: loadDocuments,
+    refreshAuth,
   };
 };
