@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle, Copy, FileSignature, KeyRound, Loader2, MapPin, PenLine, RotateCcw, Send, Shield, Smartphone, Wallet } from 'lucide-react';
-import { acceptSignature, buildDeviceFingerprint, publicSignPathToUrl, readPublicSignature } from '../lib/signatures';
+import { AlertCircle, CheckCircle, Copy, FileSignature, KeyRound, Loader2, MailCheck, MapPin, PenLine, RotateCcw, Send, Shield, Smartphone, Wallet } from 'lucide-react';
+import {
+  acceptSignature,
+  buildDeviceFingerprint,
+  publicSignPathToUrl,
+  readPublicSignature,
+  readSignatureIdentity,
+  requestSignatureEmailOtp,
+  SignatureIdentityConfig,
+  verifySignatureEmailOtp,
+} from '../lib/signatures';
 import { getIcpSignatureConfig, IcpSignatureConfig, IcpSignatureSession, startPublicIcpSignature } from '../lib/icpSignature';
 
 type NextParty = {
@@ -46,6 +55,11 @@ export const SignPage: React.FC = () => {
   const [icpSession, setIcpSession] = useState<IcpSignatureSession | null>(null);
   const [icpLoading, setIcpLoading] = useState(false);
   const [icpNotice, setIcpNotice] = useState('');
+  const [identity, setIdentity] = useState<SignatureIdentityConfig | null>(null);
+  const [identityLoading, setIdentityLoading] = useState(false);
+  const [identityNotice, setIdentityNotice] = useState('');
+  const [challengeId, setChallengeId] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -77,12 +91,14 @@ export const SignPage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [loaded, config] = await Promise.all([
+        const [loaded, config, identityConfig] = await Promise.all([
           readPublicSignature(code),
           getIcpSignatureConfig().catch(() => null),
+          readSignatureIdentity(code).catch(() => null),
         ]);
         setData(loaded);
         setIcpConfig(config);
+        setIdentity(identityConfig);
         setName(loaded.party?.name || '');
         setEmail(loaded.party?.email || '');
       } catch (err: any) {
@@ -157,6 +173,40 @@ export const SignPage: React.FC = () => {
     );
   };
 
+  const sendIdentityCode = async () => {
+    setError('');
+    setIdentityNotice('');
+    setIdentityLoading(true);
+    try {
+      const challenge = await requestSignatureEmailOtp(code);
+      setChallengeId(challenge.challengeId);
+      setIdentityNotice(`Código enviado para ${challenge.maskedEmail || 'o e-mail cadastrado'}. Ele expira em cerca de ${Math.round(challenge.expiresIn / 60)} minutos.`);
+    } catch (err: any) {
+      setError(err?.message || 'Não foi possível enviar o código de verificação.');
+    } finally {
+      setIdentityLoading(false);
+    }
+  };
+
+  const verifyIdentityCode = async () => {
+    setError('');
+    setIdentityLoading(true);
+    try {
+      const verified = await verifySignatureEmailOtp(code, challengeId, otpCode);
+      setIdentity((current) => ({
+        ...(current || { success: true, emailAvailable: true, verified: false }),
+        ...verified,
+        verified: true,
+      }));
+      setIdentityNotice('E-mail verificado. Esta assinatura terá evidência de identidade reforçada por OTP.');
+      setOtpCode('');
+    } catch (err: any) {
+      setError(err?.message || 'Código de verificação inválido.');
+    } finally {
+      setIdentityLoading(false);
+    }
+  };
+
   const handleAccept = async () => {
     setError('');
     if (!accepted) {
@@ -175,7 +225,9 @@ export const SignPage: React.FC = () => {
     setSubmitting(true);
     try {
       const signatureImage = canvasRef.current.toDataURL('image/png');
-      const consentText = 'Li o documento apresentado, confirmo meus dados, aceito assinar eletronicamente pelo DocWallet Docs e autorizo o registro das evidências técnicas da assinatura.';
+      const consentText = identity?.verified
+        ? 'Li o documento apresentado, confirmo meus dados, validei o e-mail associado ao convite e aceito assinar eletronicamente pelo DocWallet, autorizando o registro das evidências técnicas da assinatura.'
+        : 'Li o documento apresentado, confirmo meus dados, aceito assinar eletronicamente pelo DocWallet e autorizo o registro das evidências técnicas da assinatura.';
       const signed = await acceptSignature(code, {
         name,
         email,
@@ -186,7 +238,7 @@ export const SignPage: React.FC = () => {
         geolocation: geo,
         deviceFingerprint: buildDeviceFingerprint(),
         consentText,
-        evidenceLevel: 'reinforced_evidence',
+        evidenceLevel: identity?.verified ? 'verified_evidence' : 'reinforced_evidence',
       });
       setSuccess(true);
       setData(signed);
@@ -303,7 +355,10 @@ export const SignPage: React.FC = () => {
             <div className="mt-6 space-y-4">
               <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-emerald-800 flex gap-3">
                 <CheckCircle size={22} />
-                <div><p className="font-bold">Assinatura registrada</p><p className="text-sm">Sua evidência foi salva com data, IP, navegador, dispositivo, assinatura desenhada e hash do contrato.</p></div>
+                <div>
+                  <p className="font-bold">Assinatura registrada</p>
+                  <p className="text-sm">Sua evidência foi salva com data, IP, navegador, dispositivo, assinatura desenhada, hash do contrato{identity?.verified ? ' e e-mail verificado por código.' : '.'}</p>
+                </div>
               </div>
 
               {nextParty && (
@@ -342,6 +397,38 @@ export const SignPage: React.FC = () => {
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefone opcional" className="w-full px-4 py-3 border border-slate-300 rounded-xl" />
               </div>
 
+              {identity?.emailAvailable && (
+                <div className={`rounded-xl border p-4 ${identity.verified ? 'border-emerald-200 bg-emerald-50' : 'border-sky-200 bg-sky-50'}`}>
+                  <div className="flex items-start gap-3">
+                    <MailCheck className={identity.verified ? 'text-emerald-700' : 'text-sky-700'} size={20} />
+                    <div className="flex-1">
+                      <p className={`font-bold ${identity.verified ? 'text-emerald-900' : 'text-sky-950'}`}>{identity.verified ? 'E-mail verificado' : 'Verificar identidade por e-mail'}</p>
+                      <p className={`text-xs mt-1 ${identity.verified ? 'text-emerald-800' : 'text-sky-800'}`}>
+                        {identity.verified
+                          ? 'A posse do e-mail convidado foi confirmada por código de uso único e entra na trilha de evidências.'
+                          : `Envie um código para ${identity.maskedEmail || 'o e-mail do convite'} e fortaleça a evidência da assinatura.`}
+                      </p>
+                    </div>
+                  </div>
+                  {!identity.verified && (
+                    <div className="mt-3 space-y-2">
+                      {!challengeId ? (
+                        <button type="button" onClick={sendIdentityCode} disabled={identityLoading} className="w-full py-2.5 rounded-xl bg-sky-700 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                          {identityLoading ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />} Enviar código por e-mail
+                        </button>
+                      ) : (
+                        <div className="grid grid-cols-[1fr_auto] gap-2">
+                          <input value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="Código de 6 dígitos" className="w-full px-4 py-2.5 border border-sky-200 bg-white rounded-xl tracking-[0.25em] font-mono" />
+                          <button type="button" onClick={verifyIdentityCode} disabled={identityLoading || otpCode.length !== 6} className="px-4 py-2.5 rounded-xl bg-sky-700 text-white font-semibold text-sm disabled:opacity-50">Validar</button>
+                        </div>
+                      )}
+                      {challengeId && <button type="button" onClick={sendIdentityCode} disabled={identityLoading} className="text-xs font-semibold text-sky-700">Reenviar código</button>}
+                      {identityNotice && <p className="text-xs text-sky-800">{identityNotice}</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <p className="font-bold text-slate-900 flex items-center gap-2"><PenLine size={18} /> Assinatura desenhada</p>
@@ -367,11 +454,11 @@ export const SignPage: React.FC = () => {
                 <p className="text-xs text-slate-500 mt-2">{geoStatus}</p>
               </div>
 
-              <label className="flex gap-3 text-sm text-slate-600"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /> Li, aceito e desejo assinar eletronicamente este contrato pelo DocWallet Docs, com registro das evidências técnicas da assinatura.</label>
+              <label className="flex gap-3 text-sm text-slate-600"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /> Li, aceito e desejo assinar eletronicamente este contrato pelo DocWallet, com registro das evidências técnicas da assinatura.</label>
               {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">{error}</div>}
               <button onClick={handleAccept} disabled={!accepted || !name || !signatureTouched || submitting} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
                 {submitting ? <Loader2 className="animate-spin" size={18} /> : <Shield size={18} />}
-                Assinar com evidências reforçadas
+                {identity?.verified ? 'Assinar com identidade verificada' : 'Assinar com evidências reforçadas'}
               </button>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
