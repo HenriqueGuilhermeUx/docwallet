@@ -39,7 +39,10 @@ interface SignaturesPageProps {
 type PartyDraft = {
   name: string;
   email: string;
+  phone: string;
 };
+
+const emptyParty = (): PartyDraft => ({ name: '', email: '', phone: '' });
 
 const initialContract = `CONTRATO DIGITAL DOCWALLET DOCS\n\nPARTES\nParte A: ________________________________\nParte B: ________________________________\n\nOBJETO\nDescreva aqui o objeto do contrato, obrigação, serviço, entrega ou acordo.\n\nVALOR E CONDIÇÕES\nDescreva valores, prazos, forma de pagamento e condições principais.\n\nASSINATURA ELETRÔNICA\nAs partes declaram que leram, compreenderam e aceitam assinar este documento eletronicamente pelo DocWallet Docs. O aceite eletrônico registra evidências técnicas, data, IP, navegador e hash SHA-256 do conteúdo.\n`;
 
@@ -85,10 +88,7 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
   const [notice, setNotice] = useState('');
   const [title, setTitle] = useState('Contrato de Prestação de Serviços');
   const [contractContent, setContractContent] = useState(initialContract);
-  const [parties, setParties] = useState<PartyDraft[]>([
-    { name: '', email: '' },
-    { name: '', email: '' },
-  ]);
+  const [parties, setParties] = useState<PartyDraft[]>([emptyParty(), emptyParty()]);
 
   const totals = useMemo(() => {
     const total = requests.length;
@@ -141,7 +141,7 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
     setSaving(true);
     try {
       const cleanParties = parties
-        .map((item) => ({ name: item.name.trim(), email: item.email.trim() }))
+        .map((item) => ({ name: item.name.trim(), email: item.email.trim(), phone: item.phone.trim() }))
         .filter((item) => item.name);
       if (!title.trim()) throw new Error('Informe o título do documento.');
       if (!contractContent.trim()) throw new Error('Cole ou escreva o conteúdo do documento.');
@@ -166,7 +166,7 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
     setParties((current) => current.map((item, idx) => idx === index ? { ...item, [field]: value } : item));
   };
 
-  const addParty = () => setParties((current) => [...current, { name: '', email: '' }]);
+  const addParty = () => setParties((current) => [...current, emptyParty()]);
 
   const removeParty = (index: number) => {
     setParties((current) => current.length <= 1 ? current : current.filter((_, idx) => idx !== index));
@@ -183,7 +183,7 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
     setError('');
     setBusyId(party.id);
     try {
-      const result = await deliverSignature(req.id, party.id, 'whatsapp');
+      const result = await deliverSignature(req.id, party.id, 'whatsapp', { phone: party.phone || undefined });
       const url = result.url || partyUrl(party);
       if (url) window.open(url, '_blank', 'noopener,noreferrer');
       setNotice(`WhatsApp preparado para ${party.name}. O envio usa o link individual de assinatura.`);
@@ -205,7 +205,7 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
       const subject = encodeURIComponent(`Assinatura eletrônica: ${req.title}`);
       const body = encodeURIComponent(`Olá, ${party.name}.\n\nVocê recebeu um documento para assinar eletronicamente no DocWallet.\n\nAcesse: ${url}\n\nObrigado.`);
       if (party.email) window.location.href = `mailto:${party.email}?subject=${subject}&body=${body}`;
-      setNotice('O canal transacional ainda está sendo configurado. Abrimos seu aplicativo de e-mail como alternativa.');
+      setNotice('Não foi possível usar o canal transacional. Abrimos seu aplicativo de e-mail como alternativa.');
     } finally {
       setBusyId(null);
     }
@@ -223,6 +223,10 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
         } catch {
           await copy(publicSignPathToUrl(reminder.url), `Lembrete pronto para ${reminder.party.name}. Link copiado.`);
         }
+      } else if (reminder.party.phone) {
+        const delivered = await deliverSignature(req.id, reminder.party.id, 'whatsapp', { phone: reminder.party.phone, reminder: true });
+        if (delivered.url) window.open(delivered.url, '_blank', 'noopener,noreferrer');
+        setNotice(`Lembrete preparado no WhatsApp para ${reminder.party.name}.`);
       } else {
         await copy(publicSignPathToUrl(reminder.url), `Lembrete pronto para ${reminder.party.name}. Link copiado.`);
       }
@@ -318,7 +322,7 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
               <ShieldCheck size={16} /> Assinatura eletrônica com evidências
             </div>
             <h1 className="text-3xl md:text-5xl font-black leading-tight">Envie documentos, colete assinaturas e acompanhe tudo.</h1>
-            <p className="text-slate-300 mt-3 max-w-3xl">Crie links individuais, envie por WhatsApp ou e-mail, acompanhe quem assinou, registre lembretes e baixe o pacote de evidências.</p>
+            <p className="text-slate-300 mt-3 max-w-3xl">Links individuais, e-mail transacional, WhatsApp, verificação por código e ICP-Brasil no mesmo fluxo de assinatura.</p>
           </div>
           <div className="grid grid-cols-3 gap-3 min-w-[260px]">
             <div className="bg-white/10 border border-white/10 rounded-2xl p-4"><p className="text-2xl font-black">{totals.total}</p><p className="text-xs text-slate-300">documentos</p></div>
@@ -362,13 +366,15 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
             </div>
             {parties.map((party, index) => (
               <div key={index} className="grid grid-cols-[1fr_auto] gap-2 bg-slate-50 border border-slate-100 rounded-2xl p-3">
-                <div className="grid sm:grid-cols-2 gap-2">
+                <div className="grid sm:grid-cols-3 gap-2">
                   <input value={party.name} onChange={(e) => setParty(index, 'name', e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="Nome" />
                   <input value={party.email} onChange={(e) => setParty(index, 'email', e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="E-mail" />
+                  <input value={party.phone} onChange={(e) => setParty(index, 'phone', e.target.value)} className="border border-slate-200 rounded-xl px-3 py-2 text-sm" placeholder="WhatsApp +55..." />
                 </div>
                 <button type="button" onClick={() => removeParty(index)} className="p-2 text-slate-400 hover:text-red-500"><Trash2 size={16} /></button>
               </div>
             ))}
+            <p className="text-xs text-slate-500">E-mail habilita convite e OTP de identidade. Telefone direciona o compartilhamento para o WhatsApp do destinatário.</p>
           </div>
 
           <button onClick={createRequest} disabled={saving} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2">
@@ -420,7 +426,7 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
                       <div className="mt-4 space-y-2">
                         {req.parties.slice(0, 4).map((party) => (
                           <div key={party.id} className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 p-3 text-sm">
-                            <div className="min-w-0"><p className="font-semibold text-slate-800 truncate">{party.name}</p><p className="text-xs text-slate-500 truncate">{party.email}</p></div>
+                            <div className="min-w-0"><p className="font-semibold text-slate-800 truncate">{party.name}</p><p className="text-xs text-slate-500 truncate">{party.email || party.phone || 'link individual'}</p></div>
                             <span className={party.status === 'signed' ? 'text-emerald-600 font-bold text-xs' : 'text-amber-600 font-bold text-xs'}>{party.status === 'signed' ? 'Assinado' : 'Pendente'}</span>
                           </div>
                         ))}
@@ -459,10 +465,14 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
                   return (
                     <div key={party.id} className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0"><p className="font-black text-slate-900 truncate">{party.name}</p><p className="text-sm text-slate-500 truncate">{party.email}</p></div>
+                        <div className="min-w-0">
+                          <p className="font-black text-slate-900 truncate">{party.name}</p>
+                          <p className="text-sm text-slate-500 truncate">{party.email || 'Sem e-mail'}{party.phone ? ` • ${party.phone}` : ''}</p>
+                        </div>
                         <span className={party.status === 'signed' ? 'text-emerald-600 font-bold text-sm flex items-center gap-1' : 'text-amber-600 font-bold text-sm'}>{party.status === 'signed' ? <><UserCheck size={15} /> Assinado</> : 'Pendente'}</span>
                       </div>
                       {party.signed_at && <p className="text-xs text-slate-500 mt-2">Assinado em {formatDate(party.signed_at)}</p>}
+                      {party.evidence_level && party.status === 'signed' && <p className="text-xs text-indigo-600 font-semibold mt-1">Evidência: {party.evidence_level}</p>}
                       {url && (
                         <div className="mt-3 bg-white border border-slate-100 rounded-xl p-2 flex gap-2">
                           <input value={url} readOnly className="min-w-0 flex-1 text-xs px-2 outline-none" />
