@@ -63,7 +63,7 @@ export interface ReinforcedSignaturePayload {
   geolocation?: { latitude?: number | string; longitude?: number | string; accuracy?: number | string } | null;
   deviceFingerprint?: Record<string, any>;
   consentText?: string;
-  evidenceLevel?: 'basic_evidence' | 'reinforced_evidence';
+  evidenceLevel?: 'basic_evidence' | 'reinforced_evidence' | 'verified_evidence';
 }
 
 export interface SignatureDeliveryResult {
@@ -73,6 +73,23 @@ export interface SignatureDeliveryResult {
   url?: string;
   provider?: string;
   messageId?: string;
+}
+
+export interface SignatureIdentityConfig {
+  success: boolean;
+  emailAvailable: boolean;
+  maskedEmail?: string;
+  verified: boolean;
+  method?: string | null;
+  verifiedAt?: string | null;
+  evidenceLevel?: 'reinforced_evidence' | 'verified_evidence';
+}
+
+export interface SignatureIdentityChallenge {
+  success: boolean;
+  challengeId: string;
+  maskedEmail?: string;
+  expiresIn: number;
 }
 
 const parseJson = async (response: Response) => {
@@ -225,6 +242,42 @@ export const readPublicSignature = async (code: string) => {
     throw new Error(data.error || 'Link de assinatura indisponível.');
   }
   return data;
+};
+
+export const readSignatureIdentity = async (code: string): Promise<SignatureIdentityConfig> => {
+  const response = await fetch(`${requireApiUrl()}/api/sign/${code}/identity`);
+  const data = await parseJson(response);
+  if (!response.ok || data.success === false) throw new Error(data.error || 'Não foi possível carregar a verificação de identidade.');
+  return data as SignatureIdentityConfig;
+};
+
+export const requestSignatureEmailOtp = async (code: string): Promise<SignatureIdentityChallenge> => {
+  const response = await fetch(`${requireApiUrl()}/api/sign/${code}/identity/email-otp/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const data = await parseJson(response);
+  if (!response.ok || data.success === false) throw new Error(data.error || 'Não foi possível enviar o código de verificação.');
+  return data as SignatureIdentityChallenge;
+};
+
+export const verifySignatureEmailOtp = async (code: string, challengeId: string, otpCode: string): Promise<SignatureIdentityConfig> => {
+  const response = await fetch(`${requireApiUrl()}/api/sign/${code}/identity/email-otp/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ challenge_id: challengeId, code: otpCode }),
+  });
+  const data = await parseJson(response);
+  if (!response.ok || data.success === false) throw new Error(data.error || 'Código de verificação inválido.');
+  return {
+    success: true,
+    emailAvailable: true,
+    verified: Boolean(data.verified),
+    verifiedAt: data.verifiedAt || null,
+    method: 'email_otp',
+    evidenceLevel: data.evidenceLevel || 'verified_evidence',
+  };
 };
 
 export const acceptSignature = async (code: string, params: ReinforcedSignaturePayload) => {
