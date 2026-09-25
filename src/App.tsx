@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDocumentsWithAuth } from './hooks/useDocumentsWithAuth';
 import { DocumentType } from './types/document';
 import { Document } from './types/document';
@@ -15,7 +15,7 @@ import { AddDocumentModal } from './components/AddDocumentModal';
 import { DocumentViewerModal } from './components/DocumentViewerModal';
 import { AuthModal } from './components/AuthModal';
 import { BlockchainPage } from './components/BlockchainPage';
-import { Brain, Shield, FileSignature, FileKey, Zap } from 'lucide-react';
+import { AlertCircle, Brain, CheckCircle, Copy, FileSignature, FileKey, Loader2, Send, Shield, Zap } from 'lucide-react';
 import { DIDWallet } from './components/DIDWallet';
 import { ShareModal } from './components/ShareModal';
 import { PublicDoc } from './components/PublicDoc';
@@ -33,6 +33,184 @@ import { SignaturesPage } from './components/SignaturesPage';
 import { IntelligenceDashboard } from './components/IntelligenceDashboard';
 import { DocFlowBusinessPage } from './components/DocFlowBusinessPage';
 import { NexOfficeConnectFlow } from './components/NexOfficeConnectFlow';
+import { requireApiUrl } from './lib/apiBase';
+
+type IcpNextParty = {
+  code: string;
+  name: string;
+  email?: string;
+  url: string;
+};
+
+type IcpReturnPayload = {
+  success?: boolean;
+  session?: { status?: string };
+  partyStatus?: string;
+  requestStatus?: string;
+  finalHash?: string | null;
+  nextParty?: IcpNextParty | null;
+  error?: string;
+};
+
+const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+function IcpReturnGate() {
+  const [state, setState] = useState<'syncing' | 'ready' | 'completed' | 'error'>('syncing');
+  const [message, setMessage] = useState('Confirmando sua assinatura ICP-Brasil...');
+  const [nextParty, setNextParty] = useState<IcpNextParty | null>(null);
+  const [requestCompleted, setRequestCompleted] = useState(false);
+
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  const code = parts[0] === 'sign' ? parts[1] : '';
+  const sessionId = new URLSearchParams(window.location.search).get('signatureSessionId') || '';
+
+  const clearReturnQuery = () => {
+    window.history.replaceState({}, '', window.location.pathname);
+  };
+
+  useEffect(() => {
+    if (!sessionId || !code) {
+      setState('ready');
+      return;
+    }
+
+    let cancelled = false;
+
+    const sync = async () => {
+      try {
+        let result: IcpReturnPayload | null = null;
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          const response = await fetch(
+            `${requireApiUrl()}/api/sign/${encodeURIComponent(code)}/icp/status?signatureSessionId=${encodeURIComponent(sessionId)}`,
+          );
+          const data = (await response.json().catch(() => ({}))) as IcpReturnPayload;
+          if (!response.ok || data.success === false) {
+            throw new Error(data.error || 'Não foi possível confirmar a assinatura ICP-Brasil.');
+          }
+          result = data;
+          const status = (data.session?.status || '').toLowerCase();
+          if (status === 'completed' || status === 'user_cancelled' || status === 'processing_error') break;
+          setMessage('Assinatura recebida. Finalizando a validação do certificado...');
+          await sleep(1500);
+        }
+
+        if (cancelled || !result) return;
+        const status = (result.session?.status || '').toLowerCase();
+        if (status === 'completed' || result.partyStatus === 'signed') {
+          setNextParty(result.nextParty || null);
+          setRequestCompleted(result.requestStatus === 'completed');
+          clearReturnQuery();
+          setState('completed');
+          return;
+        }
+        if (status === 'user_cancelled') {
+          clearReturnQuery();
+          setState('ready');
+          return;
+        }
+        if (status === 'processing_error') {
+          throw new Error('O provedor informou um erro ao finalizar a assinatura ICP-Brasil.');
+        }
+        throw new Error('A assinatura ainda não foi concluída pelo provedor. Tente novamente em instantes.');
+      } catch (err: any) {
+        if (cancelled) return;
+        setMessage(err?.message || 'Erro ao sincronizar a assinatura ICP-Brasil.');
+        setState('error');
+      }
+    };
+
+    sync();
+    return () => {
+      cancelled = true;
+    };
+  }, [code, sessionId]);
+
+  if (state === 'ready') return <SignPage />;
+
+  if (state === 'syncing') {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl p-8 text-center shadow-2xl max-w-md w-full">
+          <Loader2 className="animate-spin mx-auto text-indigo-600 mb-4" size={42} />
+          <h1 className="text-xl font-bold text-slate-900">Validando assinatura ICP-Brasil</h1>
+          <p className="text-sm text-slate-500 mt-2">{message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === 'error') {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl p-8 text-center shadow-2xl max-w-md w-full">
+          <AlertCircle className="mx-auto text-amber-500 mb-4" size={42} />
+          <h1 className="text-xl font-bold text-slate-900">Precisamos confirmar o retorno</h1>
+          <p className="text-sm text-slate-500 mt-2">{message}</p>
+          <button
+            onClick={() => { clearReturnQuery(); setState('ready'); }}
+            className="mt-5 w-full py-3 bg-slate-900 text-white rounded-xl font-semibold"
+          >
+            Voltar para a assinatura
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const nextPartyUrl = nextParty ? `${window.location.origin}${nextParty.url}` : '';
+  const whatsappText = nextParty
+    ? encodeURIComponent(`Olá, ${nextParty.name}. Você recebeu um contrato para assinar no DocWallet: ${nextPartyUrl}`)
+    : '';
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
+      <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-lg w-full text-slate-900">
+        <CheckCircle className="text-emerald-600 mb-4" size={48} />
+        <h1 className="text-2xl font-bold">Assinatura ICP-Brasil concluída</h1>
+        <p className="text-sm text-slate-500 mt-2">
+          O DocWallet confirmou a sessão no provedor e registrou as evidências do certificado digital.
+        </p>
+
+        {nextParty && (
+          <div className="mt-6 rounded-xl bg-indigo-50 border border-indigo-100 p-4">
+            <p className="font-bold text-indigo-950">Enviar para a próxima parte</p>
+            <p className="text-sm text-indigo-900 mt-1">Agora {nextParty.name} pode continuar a assinatura.</p>
+            <input value={nextPartyUrl} readOnly className="mt-3 w-full px-3 py-2 rounded-lg border border-indigo-100 text-xs bg-white" />
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button
+                onClick={() => navigator.clipboard.writeText(nextPartyUrl).catch(() => undefined)}
+                className="py-2 bg-slate-900 text-white rounded-lg font-semibold text-sm flex items-center justify-center gap-2"
+              >
+                <Copy size={16} /> Copiar
+              </button>
+              <a
+                href={`https://wa.me/?text=${whatsappText}`}
+                target="_blank"
+                rel="noreferrer"
+                className="py-2 bg-emerald-600 text-white rounded-lg font-semibold text-sm flex items-center justify-center gap-2"
+              >
+                <Send size={16} /> WhatsApp
+              </a>
+            </div>
+          </div>
+        )}
+
+        {requestCompleted && !nextParty && (
+          <div className="mt-6 rounded-xl bg-emerald-50 border border-emerald-100 p-4 text-sm text-emerald-900">
+            Todas as partes assinaram. O contrato foi concluído e recebeu o hash final do DocWallet.
+          </div>
+        )}
+
+        <button
+          onClick={() => setState('ready')}
+          className="mt-6 w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold"
+        >
+          Ver documento e evidências
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   if (window.location.pathname.startsWith('/share/')) {
@@ -44,7 +222,7 @@ function App() {
   }
 
   if (window.location.pathname.startsWith('/sign/')) {
-    return <SignPage />;
+    return <IcpReturnGate />;
   }
 
   if (window.location.pathname === '/privacy') {
