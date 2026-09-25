@@ -15,7 +15,8 @@ interface Props {
   onChanged?: () => Promise<void> | void;
 }
 
-const eligible = (submission: DocFlowSubmission) => submission.status !== 'rejected';
+const signableStatuses = new Set(['approved', 'completed', 'archived', 'awaiting_signature']);
+const eligible = (submission: DocFlowSubmission) => signableStatuses.has(submission.status);
 
 export const DocFlowSignaturePanel: React.FC<Props> = ({ user, submissions, onChanged }) => {
   const candidates = useMemo(() => submissions.filter(eligible), [submissions]);
@@ -30,13 +31,39 @@ export const DocFlowSignaturePanel: React.FC<Props> = ({ user, submissions, onCh
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    if (!submissionId && candidates[0]) setSubmissionId(candidates[0].id);
+    if (!candidates.length) {
+      setSubmissionId('');
+      setState(null);
+      return;
+    }
+    if (!submissionId || !candidates.some((item) => item.id === submissionId)) {
+      setSubmissionId(candidates[0].id);
+    }
   }, [candidates, submissionId]);
 
   useEffect(() => {
     setName((current) => current || user.name || '');
     setEmail((current) => current || user.email || '');
   }, [user.id]);
+
+  useEffect(() => {
+    if (!submissionId) {
+      setState(null);
+      return;
+    }
+    let active = true;
+    getDocFlowSignature(submissionId)
+      .then((latest) => {
+        if (active) setState(latest);
+      })
+      .catch(() => {
+        // The explicit refresh/create actions surface errors. Silent preload keeps
+        // the panel usable even during a temporary backend restart.
+      });
+    return () => {
+      active = false;
+    };
+  }, [submissionId]);
 
   const selected = candidates.find((item) => item.id === submissionId) || null;
 
@@ -59,7 +86,7 @@ export const DocFlowSignaturePanel: React.FC<Props> = ({ user, submissions, onCh
 
   const createSignature = async () => {
     if (!submissionId || !selected) {
-      setError('Selecione um processo.');
+      setError('Selecione um processo aprovado ou concluído.');
       return;
     }
     if (!name.trim()) {
@@ -114,7 +141,7 @@ export const DocFlowSignaturePanel: React.FC<Props> = ({ user, submissions, onCh
           </div>
           <h2 className="text-2xl font-black text-slate-950">Formalizar processo com assinatura</h2>
           <p className="text-sm text-slate-500 mt-1 max-w-3xl">
-            Transforme o resultado do workflow em um termo auditável. O destinatário recebe um link único e escolhe entre assinatura eletrônica com evidências/OTP ou certificado ICP-Brasil.
+            Depois da aprovação, transforme o resultado do workflow em um termo auditável. O destinatário recebe um link único e escolhe entre assinatura eletrônica com evidências/OTP ou certificado ICP-Brasil.
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -123,7 +150,9 @@ export const DocFlowSignaturePanel: React.FC<Props> = ({ user, submissions, onCh
       </div>
 
       {!candidates.length ? (
-        <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-sm text-slate-500">Crie um processo DocFlow para habilitar a formalização.</div>
+        <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-sm text-slate-500">
+          Crie e aprove um processo DocFlow primeiro. A formalização por assinatura só é liberada após a etapa de aprovação/conclusão.
+        </div>
       ) : (
         <>
           <select
@@ -143,9 +172,9 @@ export const DocFlowSignaturePanel: React.FC<Props> = ({ user, submissions, onCh
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
-            <button onClick={createSignature} disabled={working} className="px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2">
-              {working ? <Loader2 className="animate-spin" size={18} /> : <FileSignature size={18} />}
-              Enviar para assinatura
+            <button onClick={createSignature} disabled={working || Boolean(state)} className="px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+              {working ? <Loader2 className="animate-spin" size={18} /> : state ? <CheckCircle size={18} /> : <FileSignature size={18} />}
+              {state ? 'Fluxo de assinatura criado' : 'Enviar para assinatura'}
             </button>
             <button onClick={refreshSignature} disabled={working || !submissionId} className="px-5 py-3 bg-slate-100 text-slate-800 rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2">
               <RefreshCw size={18} /> Atualizar status
