@@ -82,6 +82,28 @@ export interface DocFlowSubmission {
   updatedAt?: string;
 }
 
+export interface DocFlowSignatureParty {
+  id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  status: string;
+  evidenceLevel?: string | null;
+  signedAt?: string | null;
+  signUrl: string;
+}
+
+export interface DocFlowSignatureState {
+  submissionId: string;
+  signatureRequestId: string;
+  status: string;
+  title: string;
+  contentHash: string;
+  finalHash?: string | null;
+  completedAt?: string | null;
+  parties: DocFlowSignatureParty[];
+}
+
 export interface DocFlowDashboard {
   tenant: { id: string; name: string; plan: string };
   metrics: {
@@ -183,6 +205,26 @@ export const rejectDocFlowSubmission = async (submissionId: string, note = 'Reje
     body: JSON.stringify({ note }),
   });
   return readOrThrow(response, 'Erro ao rejeitar processo.', (data) => data.submission);
+};
+
+export const getDocFlowSignature = async (submissionId: string): Promise<DocFlowSignatureState | null> => {
+  const response = await fetch(`${api()}/api/docflow/submissions/${submissionId}/signature`, {
+    headers: authHeaders(),
+  });
+  return readOrThrow(response, 'Erro ao consultar assinatura do processo.', (data) => data.signature || null);
+};
+
+export const createDocFlowSignature = async (
+  submissionId: string,
+  parties: Array<{ name: string; email?: string; phone?: string }>,
+  title?: string,
+): Promise<DocFlowSignatureState> => {
+  const response = await fetch(`${api()}/api/docflow/submissions/${submissionId}/signature`, {
+    method: 'POST',
+    headers: authHeaders(true),
+    body: JSON.stringify({ parties, title }),
+  });
+  return readOrThrow(response, 'Erro ao enviar processo para assinatura.', (data) => data.signature as DocFlowSignatureState);
 };
 
 export const createDocFlowIntegration = async (payload: { type: string; name?: string; workflowId?: string; config?: Record<string, any>; enabled?: boolean }) => {
