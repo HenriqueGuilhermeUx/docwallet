@@ -20,6 +20,7 @@ import {
   cancelSignatureRequest,
   createSignatureReminder,
   createSignatureRequest,
+  deliverSignature,
   listSignatureRequests,
   publicSignPathToUrl,
   publicSignUrl,
@@ -153,7 +154,7 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
       setRequests((current) => [created, ...current]);
       setSelected(created);
       setSelectedContent(contractContent.trim());
-      setNotice('Solicitação criada. Copie os links ou envie por WhatsApp/e-mail.');
+      setNotice('Solicitação criada. Envie o link individual por WhatsApp ou e-mail.');
     } catch (err: any) {
       setError(err?.message || 'Erro ao criar assinatura.');
     } finally {
@@ -178,18 +179,36 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
 
   const partyUrl = (party: SignatureParty) => party.code ? publicSignUrl(party.code) : publicSignPathToUrl(party.url || '');
 
-  const sendWhatsApp = (party: SignatureParty) => {
-    const url = partyUrl(party);
-    if (!url) return;
-    const text = encodeURIComponent(`Olá, ${party.name}. Você recebeu um documento para assinar eletronicamente no DocWallet Docs: ${url}`);
-    window.open(`https://wa.me/?text=${text}`, '_blank');
+  const sendWhatsApp = async (party: SignatureParty, req: SignatureRequest) => {
+    setError('');
+    setBusyId(party.id);
+    try {
+      const result = await deliverSignature(req.id, party.id, 'whatsapp');
+      const url = result.url || partyUrl(party);
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      setNotice(`WhatsApp preparado para ${party.name}. O envio usa o link individual de assinatura.`);
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao preparar envio por WhatsApp.');
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  const sendEmail = (party: SignatureParty, req: SignatureRequest) => {
+  const sendEmail = async (party: SignatureParty, req: SignatureRequest) => {
     const url = partyUrl(party);
-    const subject = encodeURIComponent(`Assinatura eletrônica: ${req.title}`);
-    const body = encodeURIComponent(`Olá, ${party.name}.\n\nVocê recebeu um documento para assinar eletronicamente no DocWallet Docs.\n\nAcesse: ${url}\n\nObrigado.`);
-    window.location.href = `mailto:${party.email || ''}?subject=${subject}&body=${body}`;
+    setError('');
+    setBusyId(party.id);
+    try {
+      await deliverSignature(req.id, party.id, 'email');
+      setNotice(`E-mail de assinatura enviado para ${party.email}.`);
+    } catch (err: any) {
+      const subject = encodeURIComponent(`Assinatura eletrônica: ${req.title}`);
+      const body = encodeURIComponent(`Olá, ${party.name}.\n\nVocê recebeu um documento para assinar eletronicamente no DocWallet.\n\nAcesse: ${url}\n\nObrigado.`);
+      if (party.email) window.location.href = `mailto:${party.email}?subject=${subject}&body=${body}`;
+      setNotice('O canal transacional ainda está sendo configurado. Abrimos seu aplicativo de e-mail como alternativa.');
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const remind = async (req: SignatureRequest, party?: SignatureParty) => {
@@ -197,7 +216,16 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
     setBusyId(party?.id || req.id);
     try {
       const reminder = await createSignatureReminder(req.id, party?.id);
-      await copy(publicSignPathToUrl(reminder.url), `Lembrete pronto para ${reminder.party.name}. Link copiado.`);
+      if (reminder.party.email) {
+        try {
+          await deliverSignature(req.id, reminder.party.id, 'email', { reminder: true });
+          setNotice(`Lembrete enviado por e-mail para ${reminder.party.name}.`);
+        } catch {
+          await copy(publicSignPathToUrl(reminder.url), `Lembrete pronto para ${reminder.party.name}. Link copiado.`);
+        }
+      } else {
+        await copy(publicSignPathToUrl(reminder.url), `Lembrete pronto para ${reminder.party.name}. Link copiado.`);
+      }
       await refresh();
     } catch (err: any) {
       setError(err?.message || 'Erro ao gerar lembrete.');
@@ -290,7 +318,7 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
               <ShieldCheck size={16} /> Assinatura eletrônica com evidências
             </div>
             <h1 className="text-3xl md:text-5xl font-black leading-tight">Envie documentos, colete assinaturas e acompanhe tudo.</h1>
-            <p className="text-slate-300 mt-3 max-w-3xl">Crie links individuais, veja quem já assinou, envie lembretes, baixe pacote de evidências e gere hash final quando todas as partes concluírem.</p>
+            <p className="text-slate-300 mt-3 max-w-3xl">Crie links individuais, envie por WhatsApp ou e-mail, acompanhe quem assinou, registre lembretes e baixe o pacote de evidências.</p>
           </div>
           <div className="grid grid-cols-3 gap-3 min-w-[260px]">
             <div className="bg-white/10 border border-white/10 rounded-2xl p-4"><p className="text-2xl font-black">{totals.total}</p><p className="text-xs text-slate-300">documentos</p></div>
@@ -443,10 +471,10 @@ export const SignaturesPage: React.FC<SignaturesPageProps> = ({ user, onLogin })
                       )}
                       <div className="mt-3 grid grid-cols-3 gap-2">
                         <button onClick={() => copy(url, 'Link copiado.')} disabled={!url} className="py-2 rounded-xl bg-white text-slate-700 border border-slate-100 font-bold text-xs disabled:opacity-40">Copiar</button>
-                        <button onClick={() => sendWhatsApp(party)} disabled={!url} className="py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs disabled:opacity-40">WhatsApp</button>
-                        <button onClick={() => sendEmail(party, selected)} disabled={!url} className="py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs disabled:opacity-40">E-mail</button>
+                        <button onClick={() => sendWhatsApp(party, selected)} disabled={!url || busyId === party.id} className="py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs disabled:opacity-40">WhatsApp</button>
+                        <button onClick={() => sendEmail(party, selected)} disabled={!url || !party.email || busyId === party.id} className="py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs disabled:opacity-40">E-mail</button>
                       </div>
-                      {party.status !== 'signed' && <button onClick={() => remind(selected, party)} className="mt-2 w-full py-2 rounded-xl bg-amber-50 text-amber-700 font-bold text-xs">Registrar/enviar lembrete</button>}
+                      {party.status !== 'signed' && <button onClick={() => remind(selected, party)} disabled={busyId === party.id} className="mt-2 w-full py-2 rounded-xl bg-amber-50 text-amber-700 font-bold text-xs disabled:opacity-40">Enviar lembrete</button>}
                     </div>
                   );
                 })}
