@@ -21,13 +21,17 @@ const generateId = (): string => {
 };
 
 export const useDocumentsWithAuth = () => {
-  const [user, setUser] = useState<BackendUser | null>(() => readProfile());
+  const cachedProfile = readProfile();
+  const [user, setUser] = useState<BackendUser | null>(cachedProfile);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<Toast | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  // When we already have a cached profile, keep the shell visible and validate
+  // the token in the background. This avoids the "logged out" flash on every
+  // internal page navigation while still clearing the session on a real 401.
+  const [isAuthLoading, setIsAuthLoading] = useState(!cachedProfile);
 
   useEffect(() => {
     let mounted = true;
@@ -36,6 +40,7 @@ export const useDocumentsWithAuth = () => {
       if (!mounted) return;
       const detail = event instanceof CustomEvent ? event.detail as BackendUser | null : undefined;
       setUser(detail === undefined ? readProfile() : detail);
+      setIsAuthLoading(false);
     };
 
     window.addEventListener(SESSION_CHANGE_EVENT, syncFromStorage as EventListener);
@@ -51,6 +56,9 @@ export const useDocumentsWithAuth = () => {
 
     initAuth().catch(() => {
       if (mounted) {
+        // A transient backend/network failure is not a logout condition.
+        // Keep the locally cached session profile and let the next API call
+        // determine whether the token is genuinely invalid.
         setUser(readProfile());
         setIsLoading(false);
         setIsAuthLoading(false);
