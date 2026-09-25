@@ -24,8 +24,11 @@ const parseJson = async (response: Response) => {
 
 const readOrThrow = async <T>(response: Response, fallback: string, pick: (data: Record<string, any>) => T): Promise<T> => {
   const data = await parseJson(response);
-  if (response.status === 401 || response.status === 403) {
-    throw new Error(handleAuthFailure());
+  if (response.status === 401) {
+    throw new Error(handleAuthFailure(401));
+  }
+  if (response.status === 403) {
+    throw new Error(data.error || handleAuthFailure(403));
   }
   if (!response.ok || data.success === false) throw new Error(data.error || fallback);
   return pick(data);
