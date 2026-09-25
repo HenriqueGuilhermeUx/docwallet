@@ -11,7 +11,6 @@ import {
   FileText,
   Loader2,
   Mail,
-  RefreshCw,
   Send,
   Settings,
   ShieldCheck,
@@ -36,6 +35,7 @@ import {
   rejectDocFlowSubmission,
   runDocFlowSubmission,
 } from '../lib/docflow';
+import { DocFlowSignaturePanel } from './DocFlowSignaturePanel';
 
 interface Props {
   user?: BackendUser | null;
@@ -50,6 +50,8 @@ const statusLabel: Record<string, string> = {
   needs_review: 'Revisão necessária',
   awaiting_approval: 'Aguardando aprovação',
   approved: 'Aprovado',
+  awaiting_signature: 'Aguardando assinatura',
+  approved_signature: 'Assinatura aprovada',
   rejected: 'Rejeitado',
   completed: 'Concluído',
   archived: 'Arquivado',
@@ -60,7 +62,7 @@ const workflowBlocks = [
   ['SE', 'tipo = receipt / contract / invoice'],
   ['EXTRAIR', 'valor, data, fornecedor, partes'],
   ['PEDIR', 'centro de custo, projeto, motivo'],
-  ['ENTÃO', 'aprovar, exportar, arquivar'],
+  ['ENTÃO', 'aprovar, assinar, exportar, arquivar'],
 ];
 
 const companyLanes = [
@@ -72,12 +74,12 @@ const companyLanes = [
   {
     title: 'Gestor',
     icon: ClipboardCheck,
-    items: ['recebe processo estruturado', 'confere valor, data e fornecedor', 'aprova ou rejeita', 'deixa trilha de auditoria'],
+    items: ['recebe processo estruturado', 'confere valor, data e fornecedor', 'aprova ou rejeita', 'formaliza com assinatura quando necessário'],
   },
   {
     title: 'Financeiro / compliance',
     icon: ShieldCheck,
-    items: ['visualiza aprovados', 'exporta CSV/webhook/ERP', 'guarda comprovante com hash', 'formaliza pagamento e arquivo'],
+    items: ['visualiza aprovados e assinados', 'exporta CSV/webhook/ERP', 'guarda comprovante com hash', 'preserva trilha de auditoria e evidências'],
   },
 ];
 
@@ -247,7 +249,7 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
     setError('');
     try {
       await approveDocFlowSubmission(submissionId, 'Aprovado pelo gestor');
-      setNotice('Processo aprovado. O financeiro já pode formalizar pagamento/exportação.');
+      setNotice('Processo aprovado. Agora ele pode ser formalizado no DocWallet Sign, exportado ou arquivado.');
       await load();
     } catch (err: any) {
       setError(err?.message || 'Erro ao aprovar.');
@@ -299,7 +301,7 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
             <Zap className="mx-auto text-violet-300 mb-4" size={50} />
             <p className="text-violet-200 font-bold mb-2">DOCFLOW BY DOCWALLET</p>
             <h1 className="text-3xl lg:text-5xl font-black">Transforme documentos em processos.</h1>
-            <p className="text-slate-300 mt-4 max-w-3xl mx-auto">Fotografe, envie ou receba um documento. O DocFlow extrai dados, pede complementos, envia para aprovação, prepara integração e arquiva com trilha de confiança.</p>
+            <p className="text-slate-300 mt-4 max-w-3xl mx-auto">Fotografe, envie ou receba um documento. O DocFlow extrai dados, pede complementos, aprova, assina, integra e arquiva com trilha de confiança.</p>
             <button onClick={onLogin} className="mt-7 px-7 py-3 bg-white text-slate-950 rounded-full font-bold">Entrar para usar</button>
           </div>
         </section>
@@ -314,8 +316,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
         <div className="relative z-10 grid lg:grid-cols-[1.1fr_0.9fr] gap-6 items-center">
           <div>
             <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 px-3 py-1 rounded-full text-sm font-semibold mb-4"><Building2 size={16} /> DOCFLOW BY DOCWALLET</div>
-            <h1 className="text-3xl lg:text-5xl font-black leading-tight">Transforme documentos em processos.</h1>
-            <p className="text-slate-300 mt-4 max-w-3xl">O funcionário fotografa. A empresa aprova, formaliza, exporta e arquiva. O motor por baixo é o AV Document Intelligence do DocWallet.</p>
+            <h1 className="text-3xl lg:text-5xl font-black leading-tight">Transforme documentos em processos confiáveis.</h1>
+            <p className="text-slate-300 mt-4 max-w-3xl">Capture, extraia, valide, aprove, assine eletronicamente ou com ICP-Brasil, exporte e arquive. O motor documental e a camada de confiança agora trabalham juntos.</p>
             <div className="flex flex-wrap gap-3 mt-6">
               <button onClick={onAddDocument} className="px-5 py-3 bg-white text-slate-950 rounded-xl font-bold flex items-center gap-2"><Camera size={18} /> Capturar documento</button>
               <button onClick={createTemplateWorkflow} disabled={working} className="px-5 py-3 bg-violet-600 text-white rounded-xl font-bold flex items-center gap-2 disabled:opacity-50"><Zap size={18} /> Criar fluxo por template</button>
@@ -335,10 +337,10 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
       {error && sessionExpired(error) && (
         <section className="bg-amber-50 border border-amber-100 text-amber-900 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="font-bold">Sessão antiga detectada</h2>
-            <p className="text-sm mt-1">O backend foi atualizado e o token antigo perdeu validade. Entre novamente para limpar essa mensagem.</p>
+            <h2 className="font-bold">Sessão expirada</h2>
+            <p className="text-sm mt-1">Somente um 401 real encerra a sessão. Entre novamente para continuar.</p>
           </div>
-          <button onClick={() => window.location.reload()} className="px-5 py-3 rounded-xl bg-amber-600 text-white font-bold">Atualizar login</button>
+          <button onClick={onLogin} className="px-5 py-3 rounded-xl bg-amber-600 text-white font-bold">Entrar novamente</button>
         </section>
       )}
       {error && !sessionExpired(error) && <div className="bg-red-50 text-red-700 rounded-2xl p-4 text-sm">{error}</div>}
@@ -442,6 +444,8 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
         </div>
       </section>
 
+      <DocFlowSignaturePanel user={user} submissions={submissions} onChanged={load} />
+
       <section className="grid lg:grid-cols-[1fr_1fr] gap-5">
         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 lg:p-7">
           <h2 className="text-2xl font-black text-slate-950 mb-4">Processos recentes</h2>
@@ -470,7 +474,7 @@ export const DocFlowBusinessPage: React.FC<Props> = ({ user, documents, onLogin,
           {latestSubmission ? <JsonPreview data={latestSubmission.extractedData || {}} /> : <p className="text-sm text-slate-500">Rode um processo para ver o JSON extraído pela inteligência documental.</p>}
           <div className="mt-4 rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-950">
             <p className="font-bold flex items-center gap-2"><ShieldCheck size={17} /> DocWallet Trust</p>
-            <p className="mt-1">O arquivo original fica preservado, com hash, trilha de auditoria e opção de assinatura/registro de integridade.</p>
+            <p className="mt-1">O arquivo original fica preservado com hash, inteligência documental, aprovações, assinatura eletrônica/ICP-Brasil e trilha de auditoria.</p>
           </div>
         </div>
       </section>
