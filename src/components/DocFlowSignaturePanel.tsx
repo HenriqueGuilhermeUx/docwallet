@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle, Copy, ExternalLink, FileSignature, KeyRound, Loader2, RefreshCw, Send, ShieldCheck } from 'lucide-react';
+import { CheckCircle, Copy, ExternalLink, FileSignature, KeyRound, Loader2, Mail, RefreshCw, Send, ShieldCheck } from 'lucide-react';
 import { BackendUser } from '../lib/backendSession';
 import {
   createDocFlowSignature,
@@ -7,6 +7,7 @@ import {
   DocFlowSubmission,
   getDocFlowSignature,
 } from '../lib/docflow';
+import { deliverSignature } from '../lib/signatures';
 
 interface Props {
   user: BackendUser;
@@ -24,6 +25,7 @@ export const DocFlowSignaturePanel: React.FC<Props> = ({ user, submissions, onCh
   const [phone, setPhone] = useState('');
   const [state, setState] = useState<DocFlowSignatureState | null>(null);
   const [working, setWorking] = useState(false);
+  const [busyPartyId, setBusyPartyId] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -86,6 +88,21 @@ export const DocFlowSignaturePanel: React.FC<Props> = ({ user, submissions, onCh
   const copy = async (value: string) => {
     await navigator.clipboard.writeText(value).catch(() => undefined);
     setNotice('Link individual copiado.');
+  };
+
+  const sendInvite = async (partyId: string, channel: 'email' | 'whatsapp', partyPhone?: string | null) => {
+    if (!state) return;
+    setBusyPartyId(partyId);
+    setError('');
+    try {
+      const delivered = await deliverSignature(state.signatureRequestId, partyId, channel, { phone: partyPhone || undefined });
+      if (channel === 'whatsapp' && delivered.url) window.open(delivered.url, '_blank', 'noopener,noreferrer');
+      setNotice(channel === 'email' ? 'Convite de assinatura enviado por e-mail.' : 'WhatsApp aberto com o convite individual pronto para envio.');
+    } catch (err: any) {
+      setError(err?.message || 'Não foi possível preparar o convite.');
+    } finally {
+      setBusyPartyId('');
+    }
   };
 
   return (
@@ -164,19 +181,16 @@ export const DocFlowSignaturePanel: React.FC<Props> = ({ user, submissions, onCh
                   {party.status === 'signed' ? (
                     <span className="text-emerald-700 font-bold text-sm flex items-center gap-1"><CheckCircle size={16} /> Assinado</span>
                   ) : (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <button onClick={() => copy(party.signUrl)} className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold flex items-center gap-1"><Copy size={14} /> Copiar</button>
-                      <a href={party.signUrl} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold flex items-center gap-1"><ExternalLink size={14} /> Abrir</a>
+                      {party.email && <button onClick={() => sendInvite(party.id, 'email', party.phone)} disabled={busyPartyId === party.id} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"><Mail size={14} /> E-mail</button>}
+                      <button onClick={() => sendInvite(party.id, 'whatsapp', party.phone)} disabled={busyPartyId === party.id} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50"><Send size={14} /> WhatsApp</button>
+                      <a href={party.signUrl} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold flex items-center gap-1"><ExternalLink size={14} /> Abrir</a>
                     </div>
                   )}
                 </div>
               </div>
             ))}
-          </div>
-
-          <div className="text-xs text-slate-500 flex items-start gap-2">
-            <Send size={15} className="mt-0.5" />
-            O envio por e-mail/WhatsApp continua disponível no DocWallet Sign, usando o mesmo request de assinatura criado por este processo.
           </div>
         </div>
       )}
