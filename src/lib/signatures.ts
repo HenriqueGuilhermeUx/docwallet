@@ -66,6 +66,15 @@ export interface ReinforcedSignaturePayload {
   evidenceLevel?: 'basic_evidence' | 'reinforced_evidence';
 }
 
+export interface SignatureDeliveryResult {
+  success: boolean;
+  channel: 'email' | 'whatsapp';
+  signUrl?: string;
+  url?: string;
+  provider?: string;
+  messageId?: string;
+}
+
 const parseJson = async (response: Response) => {
   const text = await response.text();
   try {
@@ -179,6 +188,25 @@ export const createSignatureReminder = async (requestId: string, partyId?: strin
     body: JSON.stringify({ party_id: partyId || '' }),
   });
   return readOrThrow(response, 'Erro ao criar lembrete.', (data) => ({ party: data.party as SignatureParty, url: data.url, message: data.message }));
+};
+
+export const deliverSignature = async (
+  requestId: string,
+  partyId: string,
+  channel: 'email' | 'whatsapp',
+  options: { phone?: string; reminder?: boolean } = {},
+): Promise<SignatureDeliveryResult> => {
+  const response = await fetch(`${requireApiUrl()}/api/signatures/${requestId}/deliver`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({
+      party_id: partyId,
+      channel,
+      phone: options.phone || '',
+      reminder: Boolean(options.reminder),
+    }),
+  });
+  return readOrThrow(response, 'Erro ao enviar solicitação de assinatura.', (data) => data as SignatureDeliveryResult);
 };
 
 export const cancelSignatureRequest = async (requestId: string): Promise<SignatureRequest> => {
