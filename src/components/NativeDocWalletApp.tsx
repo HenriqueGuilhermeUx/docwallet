@@ -28,8 +28,8 @@ import { DocumentViewerModal } from './DocumentViewerModal';
 import { FreeHashValidatorPage } from './FreeHashValidatorPage';
 import { IntelligenceDashboard } from './IntelligenceDashboard';
 import { SearchBar } from './Header';
+import { NativeSignaturesPage } from './NativeSignaturesPage';
 import { ShareModal } from './ShareModal';
-import { SignaturesPage } from './SignaturesPage';
 import { Toast } from './Toast';
 
 type NativeTab = 'receive' | 'understand' | 'process' | 'sign' | 'prove';
@@ -333,7 +333,7 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
         {tab === 'receive' && receiveView}
         {tab === 'understand' && <IntelligenceDashboard user={user} documents={allDocuments} onLogin={() => setShowAuthModal(true)} />}
         {tab === 'process' && <DocFlowBusinessPage user={user} documents={allDocuments} onLogin={() => setShowAuthModal(true)} onAddDocument={handleAddClick} />}
-        {tab === 'sign' && <SignaturesPage user={user} onLogin={() => setShowAuthModal(true)} />}
+        {tab === 'sign' && <NativeSignaturesPage user={user} onLogin={() => setShowAuthModal(true)} />}
         {tab === 'prove' && proveView}
       </main>
 
