@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  ArrowLeft,
   BadgeCheck,
   Brain,
   FileSignature,
@@ -19,10 +20,12 @@ import { AuthModal } from './AuthModal';
 import { BlockchainPage } from './BlockchainPage';
 import { CategoryTabs } from './CategoryTabs';
 import { CertificateHistoryPanel } from './CertificateHistoryPanel';
+import { CertificateLookupPage } from './CertificateLookupPage';
 import { DIDWallet } from './DIDWallet';
 import { DocFlowBusinessPage } from './DocFlowBusinessPage';
 import { DocumentGrid } from './DocumentGrid';
 import { DocumentViewerModal } from './DocumentViewerModal';
+import { FreeHashValidatorPage } from './FreeHashValidatorPage';
 import { IntelligenceDashboard } from './IntelligenceDashboard';
 import { SearchBar } from './Header';
 import { ShareModal } from './ShareModal';
@@ -30,6 +33,7 @@ import { SignaturesPage } from './SignaturesPage';
 import { Toast } from './Toast';
 
 type NativeTab = 'receive' | 'understand' | 'process' | 'sign' | 'prove';
+type ProveTool = 'hash' | 'certificate' | null;
 
 type NativeDocWalletAppProps = {
   initialPath?: string;
@@ -77,10 +81,11 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
   } = useDocumentsWithAuth();
 
   const [tab, setTab] = useState<NativeTab>(() => pathToTab(initialPath));
+  const [proveTool, setProveTool] = useState<ProveTool>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareDocument, setShareDocument] = useState<Document | null>(null);
   const [showBlockchainModal, setShowBlockchainModal] = useState(false);
   const [showDIDWallet, setShowDIDWallet] = useState(false);
 
@@ -89,6 +94,7 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
 
   const selectTab = (next: NativeTab) => {
     setTab(next);
+    setProveTool(null);
     const path = tabToPath[next];
     if (next !== 'prove' && window.location.pathname !== path) {
       window.history.replaceState({}, '', path);
@@ -103,10 +109,6 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
 
   const handleAddDocument = async (name: string, type: DocumentType, file: File) => {
     await addDocument(name, type, file);
-  };
-
-  const openPublicTool = (path: string) => {
-    window.location.href = path;
   };
 
   const topBar = (
@@ -247,14 +249,14 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
       <DocumentGrid
         documents={documents}
         onDocumentClick={setSelectedDocument}
-        onShareDocument={(document) => { setSelectedDocument(document); setShowShareModal(true); }}
-        onAuthenticateDocument={(document) => { setSelectedDocument(document); setShowBlockchainModal(true); }}
+        onShareDocument={(document) => setShareDocument(document)}
+        onAuthenticateDocument={() => setShowBlockchainModal(true)}
         isLoading={isLoading}
       />
     </>
   );
 
-  const proveView = (
+  const proveHome = (
     <div className="px-4 py-5 space-y-5">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">Comprovar</p>
@@ -267,7 +269,7 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
-          onClick={() => openPublicTool('/validar-documento')}
+          onClick={() => setProveTool('hash')}
           className="text-left min-h-32 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm active:scale-[0.99]"
         >
           <Shield size={24} className="text-emerald-600" />
@@ -277,7 +279,7 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
 
         <button
           type="button"
-          onClick={() => openPublicTool('/verificar-certificado')}
+          onClick={() => setProveTool('certificate')}
           className="text-left min-h-32 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm active:scale-[0.99]"
         >
           <BadgeCheck size={24} className="text-indigo-600" />
@@ -307,6 +309,21 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
       </div>
     </div>
   );
+
+  const proveView = proveTool ? (
+    <div className="pb-6">
+      <div className="sticky top-16 z-30 bg-slate-50/95 backdrop-blur border-b border-slate-200 px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setProveTool(null)}
+          className="inline-flex items-center gap-2 min-h-10 px-3 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-700"
+        >
+          <ArrowLeft size={17} /> Voltar para Comprovar
+        </button>
+      </div>
+      {proveTool === 'hash' ? <FreeHashValidatorPage /> : <CertificateLookupPage />}
+    </div>
+  ) : proveHome;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -352,8 +369,8 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
         <DocumentViewerModal document={selectedDocument} onClose={() => setSelectedDocument(null)} onDelete={deleteDocument} />
       )}
 
-      {showShareModal && selectedDocument && (
-        <ShareModal document={selectedDocument} onClose={() => setShowShareModal(false)} />
+      {shareDocument && (
+        <ShareModal document={shareDocument} onClose={() => setShareDocument(null)} />
       )}
 
       {showAuthModal && (
