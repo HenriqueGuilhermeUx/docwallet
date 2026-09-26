@@ -73,11 +73,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <h2 className="text-lg font-semibold text-slate-800">
               {mode === 'login' ? 'Bem-vindo!' : 'Criar sua conta'}
             </h2>
-            <p className="text-sm text-slate-500">
-              Acesse sua carteira DocWallet
-            </p>
+            <p className="text-sm text-slate-500">Acesse sua carteira DocWallet</p>
           </div>
-          <button onClick={handleClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+          <button onClick={handleClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors" aria-label="Fechar">
             <X className="text-slate-500" size={20} />
           </button>
         </div>
@@ -94,17 +92,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           <EcosystemButton />
 
           <div className="flex items-center gap-4">
-            <div className="flex-1 h-px bg-slate-200"></div>
+            <div className="flex-1 h-px bg-slate-200" />
             <span className="text-slate-400 text-sm">ou</span>
-            <div className="flex-1 h-px bg-slate-200"></div>
+            <div className="flex-1 h-px bg-slate-200" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Nome completo
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Nome completo</label>
                 <input
                   type="text"
                   value={name}
@@ -117,9 +113,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                E-mail
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">E-mail</label>
               <input
                 type="email"
                 value={email}
@@ -131,9 +125,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Senha
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Senha</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -148,17 +140,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
 
-            {error && (
-              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">
-                {error}
-              </div>
-            )}
+            {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">{error}</div>}
 
             <button
               type="submit"
@@ -171,7 +160,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           </form>
         </div>
 
-        <div className="px-6 pb-6 text-center">
+        <div className="px-6 pb-6 text-center space-y-3">
           <p className="text-slate-500 text-sm">
             {mode === 'login' ? 'Não tem uma conta?' : 'Já tem uma conta?'}
             <button
@@ -185,6 +174,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               {mode === 'login' ? 'Cadastre-se' : 'Fazer login'}
             </button>
           </p>
+
+          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs">
+            <a href="/privacy" className="text-slate-500 hover:text-primary font-medium">Política de Privacidade</a>
+            <a href="/terms" className="text-slate-500 hover:text-primary font-medium">Termos de Uso</a>
+            <a href="/delete-account" className="text-red-600 hover:text-red-700 font-semibold">Excluir conta e dados</a>
+          </div>
         </div>
       </div>
     </div>
