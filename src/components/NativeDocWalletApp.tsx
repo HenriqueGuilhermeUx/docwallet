@@ -281,10 +281,6 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
           <p className="text-xs text-slate-500 mt-1">Consulte certificados DocWallet.</p>
         </button>
       </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-        Recursos pagos de registro em blockchain permanecem disponíveis no DocWallet Web e não fazem parte desta versão Android da Google Play.
-      </div>
     </div>
   );
 
