@@ -9,6 +9,7 @@ import {
   Shield,
   Upload,
   Wallet,
+  X,
   Zap,
 } from 'lucide-react';
 import { useDocumentsWithAuth } from '../hooks/useDocumentsWithAuth';
@@ -81,6 +82,7 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
   const [proveTool, setProveTool] = useState<ProveTool>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [shareDocument, setShareDocument] = useState<Document | null>(null);
 
@@ -127,10 +129,10 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
             <span className="hidden min-[390px]:block text-xs text-slate-500 max-w-24 truncate">{userLabel}</span>
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={() => setShowAccountMenu(true)}
               className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold active:scale-95"
-              aria-label="Sair da conta"
-              title="Sair"
+              aria-label="Abrir conta e privacidade"
+              title="Conta e privacidade"
             >
               {userInitial}
             </button>
@@ -351,11 +353,41 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => setShowAuthModal(false)} />
       )}
 
-      {toast && <Toast message={toast.message} type={toast.type} />}
+      {showAccountMenu && (
+        <div className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center" onClick={() => setShowAccountMenu(false)}>
+          <div
+            className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 shadow-2xl"
+            style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-600">Conta</p>
+                <h2 className="text-xl font-black text-slate-900 mt-1">Conta e privacidade</h2>
+                <p className="text-sm text-slate-500 mt-1 break-all">{user.email}</p>
+              </div>
+              <button onClick={() => setShowAccountMenu(false)} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center" aria-label="Fechar conta e privacidade">
+                <X size={18} />
+              </button>
+            </div>
 
-      <button type="button" onClick={handleLogout} className="sr-only" aria-label="Sair da conta">
-        <LogOut size={16} />
-      </button>
+            <div className="mt-5 space-y-2">
+              <a href="/privacy" className="block w-full min-h-12 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 font-bold text-slate-800">Política de Privacidade</a>
+              <a href="/terms" className="block w-full min-h-12 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 font-bold text-slate-800">Termos de Uso</a>
+              <a href="/delete-account" className="block w-full min-h-12 rounded-2xl bg-red-50 border border-red-100 px-4 py-3 font-black text-red-700">Excluir conta e dados</a>
+              <button
+                type="button"
+                onClick={() => { setShowAccountMenu(false); handleLogout(); }}
+                className="w-full min-h-12 rounded-2xl bg-slate-950 text-white font-black flex items-center justify-center gap-2"
+              >
+                <LogOut size={18} /> Sair da conta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   );
 };
