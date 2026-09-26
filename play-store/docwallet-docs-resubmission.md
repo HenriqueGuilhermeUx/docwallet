@@ -1,70 +1,75 @@
-# DocWallet Docs — nova submissão Google Play
+# DocWallet Docs — submissão Google Play 2026
 
-## Decisão oficial
+## App
 
-O app antigo `br.com.docwallet.app` foi suspenso e não deve ser reenviado. A nova submissão deve usar novo nome e novo package name.
-
-## Novo app
-
-- Nome na loja: `DocWallet Docs`
+- Nome: `DocWallet Docs`
 - Package name: `br.com.alternativeventures.docwalletdocs`
 - Categoria: Produtividade
+- Target Android: API 36
+- Distribuição inicial recomendada: teste interno; depois produção conforme elegibilidade da conta.
+
+## Build de referência
+
+Usar o AAB assinado gerado pelo workflow Android do App 2.0. Não usar APK de debug para a Play Store.
 
 ## Antes de enviar
 
-Validar no APK de teste:
-
-1. App abre sem travar.
-2. Status bar Android não cobre o cabeçalho.
-3. Login funciona.
-4. Cadastro funciona.
-5. Logout funciona pelo botão/ícone do usuário.
-6. Usuário de revisão funciona:
-   - E-mail: `google.review@docwallet.app`
-   - Senha: `DocWalletReview@2026`
-7. Adicionar documento abre corretamente.
-8. Validação gratuita por hash funciona.
-9. Modelos de contrato abrem.
-10. Verificação de certificado abre.
-11. Não aparece botão antigo de PWA/instalar app.
-12. O ícone instalado bate com o ícone da Play Store.
+1. Confirmar que o app abre sem travar.
+2. Login, cadastro e logout funcionando.
+3. Receber, Entender, Processar, Assinar e Comprovar acessíveis.
+4. Envio para assinatura por e-mail/WhatsApp/link funcionando.
+5. Retorno ao app atualiza o status da assinatura.
+6. Fluxo concluído permite baixar o PDF final.
+7. Validação por hash e certificado funcionando.
+8. ICP-Brasil continua disponível nos fluxos compatíveis.
+9. Política de privacidade: `https://trydocwallet.com/privacy`.
+10. Termos: `https://trydocwallet.com/terms`.
+11. Exclusão de conta: `https://trydocwallet.com/delete-account`.
+12. Ícone da loja corresponde ao app instalado.
 
 ## Screenshots
 
-Usar somente prints reais do APK instalado no celular. Não usar mockups genéricos.
+Usar apenas capturas reais do APK instalado, sem mockups que mostrem funções inexistentes.
 
-Sugestão de prints:
+Prioridade de capturas:
 
-1. Tela inicial logada.
-2. Tela de adicionar documento.
-3. Lista/cofre de documentos.
-4. Validação gratuita por hash.
-5. Modelos de contrato.
-6. Verificação de certificado.
+1. Tela Receber / documentos.
+2. Intelligence / Entender.
+3. DocFlow / Processar.
+4. Assinaturas / acompanhamento.
+5. Documento concluído com botão `Baixar PDF assinado`.
+6. Comprovar / hash e certificados.
 
-## App Access na Play Console
+## App Access
 
-Informar que o app exige login e fornecer:
+O app exige login. Criar uma conta exclusiva para a revisão e informar usuário e senha somente no campo `Conteúdo do app > Acesso ao app` do Play Console.
 
-- E-mail: `google.review@docwallet.app`
-- Senha: `DocWalletReview@2026`
+A conta de revisão deve:
 
-Instruções: após login, o revisor pode testar cofre de documentos, adicionar documento, validação gratuita por hash, modelos de contrato, assinatura eletrônica e certificados.
+- permanecer ativa durante o processo de revisão;
+- não depender de biometria;
+- não exigir OTP/2FA para o login principal;
+- permitir ao revisor acessar as principais áreas do produto.
 
-## Cuidado com claims
+Nunca armazenar credenciais de revisão no Git.
 
-Não dizer:
+## Claims
 
-- substitui cartório
-- reconhecimento de firma
-- assinatura ICP-Brasil
-- validade jurídica garantida
-- investimento/cripto
+Evitar afirmações absolutas como:
 
-Dizer:
+- `substitui cartório`;
+- `validade jurídica garantida`;
+- `reconhecimento de firma`.
 
-- carteira digital de documentos
-- assinatura eletrônica com evidências
-- certificado digital de integridade
-- hash SHA-256
-- histórico e compartilhamento seguro
+Pode descrever de forma factual:
+
+- carteira e ciclo de documentos;
+- assinatura eletrônica com evidências;
+- assinatura ICP-Brasil nos fluxos em que o provedor integrado estiver disponível;
+- hash SHA-256;
+- certificados e provas de integridade;
+- download do PDF final assinado.
+
+## Android Developer Verification
+
+Antes da publicação, conferir no Play Console se a identidade do desenvolvedor está verificada e se o package `br.com.alternativeventures.docwalletdocs` está registrado/auto-registrado na página de verificação de desenvolvedor Android.
