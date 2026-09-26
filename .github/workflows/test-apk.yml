@@ -18,16 +18,18 @@ jobs:
           node-version: 24
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Setup Android SDK 35
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
-      - name: Install Android API 35
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Android API 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
       - name: Install dependencies
         run: npm install
@@ -35,6 +37,7 @@ jobs:
       - name: Build web app
         env:
           VITE_DOCWALLET_API_URL: https://docwallet-backend.onrender.com
+          VITE_DOCWALLET_PUBLIC_URL: https://trydocwallet.com
           VITE_DOCWALLET_CHAIN_ID: 137
           VITE_DOCWALLET_NETWORK_NAME: Polygon
           VITE_DOCWALLET_RPC_URL: https://polygon-rpc.com
@@ -49,25 +52,30 @@ jobs:
       - name: Create Android project
         run: npx cap add android
 
-      - name: Force Android target API 35
+      - name: Sync Android
+        run: npx cap sync android
+
+      - name: Force Android API 36 after sync
         run: |
           if [ -f android/variables.gradle ]; then
-            sed -i 's/compileSdkVersion = [0-9][0-9]*/compileSdkVersion = 35/g' android/variables.gradle
-            sed -i 's/targetSdkVersion = [0-9][0-9]*/targetSdkVersion = 35/g' android/variables.gradle
-            cat android/variables.gradle
+            sed -i 's/compileSdkVersion = [0-9][0-9]*/compileSdkVersion = 36/g' android/variables.gradle
+            sed -i 's/targetSdkVersion = [0-9][0-9]*/targetSdkVersion = 36/g' android/variables.gradle
           fi
+          if [ -f android/app/build.gradle ]; then
+            sed -i 's/compileSdk [0-9][0-9]*/compileSdk 36/g' android/app/build.gradle || true
+            sed -i 's/targetSdk [0-9][0-9]*/targetSdk 36/g' android/app/build.gradle || true
+            sed -i 's/targetSdkVersion [0-9][0-9]*/targetSdkVersion 36/g' android/app/build.gradle || true
+          fi
+          grep -R "compileSdk\|targetSdk" -n android || true
 
       - name: Force test version
         run: |
           APP_GRADLE="android/app/build.gradle"
           VERSION_CODE=${{ github.run_number }}
-          VERSION_NAME="test-${{ github.run_number }}"
+          VERSION_NAME="2.0-test.${{ github.run_number }}"
           sed -i "s/versionCode [0-9][0-9]*/versionCode $VERSION_CODE/g" "$APP_GRADLE"
           sed -i "s/versionName \"[^\"]*\"/versionName \"$VERSION_NAME\"/g" "$APP_GRADLE"
           grep -n "versionCode\|versionName" "$APP_GRADLE"
-
-      - name: Sync Android
-        run: npx cap sync android
 
       - name: Apply DocWallet launcher icon
         run: npm run android:icons
@@ -78,10 +86,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p output
-          cp android/app/build/outputs/apk/debug/*.apk output/docwallet-test.apk
+          cp android/app/build/outputs/apk/debug/*.apk output/docwallet-app-v2-test.apk
 
       - name: Upload test APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: docwallet-test-apk
-          path: output/docwallet-test.apk
+          name: docwallet-app-v2-test-apk
+          path: output/docwallet-app-v2-test.apk
