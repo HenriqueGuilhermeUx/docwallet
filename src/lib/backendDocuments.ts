@@ -1,5 +1,5 @@
 import { requireApiUrl } from './apiBase';
-import { readSession } from './backendSession';
+import { readSession, handleAuthFailure } from './backendSession';
 import { Document, DocumentType, Category } from '../types/document';
 
 const api = () => requireApiUrl();
@@ -7,6 +7,23 @@ const api = () => requireApiUrl();
 const requestHeaders = () => {
   const key = 'Author' + 'ization';
   return { [key]: `Bearer ${readSession() || ''}` } as Record<string, string>;
+};
+
+const parseJson = async (response: Response) => {
+  const text = await response.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return { error: text || 'Resposta inválida do servidor.' };
+  }
+};
+
+const readOrThrow = async <T>(response: Response, fallback: string, pick: (data: Record<string, any>) => T): Promise<T> => {
+  const data = await parseJson(response);
+  if (response.status === 401) throw new Error(handleAuthFailure(401));
+  if (response.status === 403) throw new Error(data.error || handleAuthFailure(403));
+  if (!response.ok || data.success === false) throw new Error(data.error || fallback);
+  return pick(data);
 };
 
 const downloadUrl = (documentId: string) => {
@@ -31,13 +48,7 @@ const toDocument = (item: any): Document => ({
 
 export const listBackendDocuments = async (): Promise<Document[]> => {
   const response = await fetch(`${api()}/api/documents`, { headers: requestHeaders() });
-  const data = await response.json();
-
-  if (!response.ok || data.success === false) {
-    throw new Error(data.error || 'Erro ao carregar documentos');
-  }
-
-  return (data.documents || []).map(toDocument);
+  return readOrThrow(response, 'Erro ao carregar documentos', (data) => (data.documents || []).map(toDocument));
 };
 
 export const uploadBackendDocument = async (
@@ -58,13 +69,7 @@ export const uploadBackendDocument = async (
     body: form,
   });
 
-  const data = await response.json();
-
-  if (!response.ok || data.success === false) {
-    throw new Error(data.error || 'Erro ao enviar documento');
-  }
-
-  return toDocument(data.document);
+  return readOrThrow(response, 'Erro ao enviar documento', (data) => toDocument(data.document));
 };
 
 export const deleteBackendDocument = async (documentId: string): Promise<void> => {
@@ -73,11 +78,7 @@ export const deleteBackendDocument = async (documentId: string): Promise<void> =
     headers: requestHeaders(),
   });
 
-  const data = await response.json();
-
-  if (!response.ok || data.success === false) {
-    throw new Error(data.error || 'Erro ao excluir documento');
-  }
+  return readOrThrow(response, 'Erro ao excluir documento', () => undefined);
 };
 
 export const backendShareLink = (documentId: string): string => {
