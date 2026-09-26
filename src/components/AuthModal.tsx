@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { X, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { loginWithBackend, registerWithBackend } from '../lib/backendLogin';
 import { EcosystemButton } from './EcosystemButton';
@@ -17,6 +17,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submitLock = useRef(false);
 
   const resetForm = () => {
     setEmail('');
@@ -32,6 +33,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLock.current) return;
+
+    if (mode === 'register' && !name.trim()) {
+      setError('Por favor, informe seu nome');
+      return;
+    }
+
+    submitLock.current = true;
     setError(null);
     setIsLoading(true);
 
@@ -39,12 +48,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       if (mode === 'login') {
         await loginWithBackend(email, password);
       } else {
-        if (!name.trim()) {
-          setError('Por favor, informe seu nome');
-          setIsLoading(false);
-          return;
-        }
-
         await registerWithBackend(name, email, password);
       }
 
@@ -53,6 +56,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     } catch (err: any) {
       setError(err.message || 'Erro ao autenticar. Tente novamente.');
     } finally {
+      submitLock.current = false;
       setIsLoading(false);
     }
   };

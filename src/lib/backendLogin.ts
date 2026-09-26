@@ -11,6 +11,9 @@ type AuthPayload = {
 
 const transientStatus = (status: number) => [502, 503, 504].includes(status);
 const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+const retryableNetworkError = (error: unknown) => (
+  error instanceof TypeError || (error instanceof DOMException && error.name === 'AbortError')
+);
 
 const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs = 15000) => {
   const controller = new AbortController();
@@ -57,15 +60,16 @@ const postLogin = async (path: string, payload: Record<string, string>, retryTra
       return data.user;
     } catch (error) {
       lastError = error;
-      if (attempt + 1 < attempts) {
+      if (retryTransient && retryableNetworkError(error) && attempt + 1 < attempts) {
         await sleep(1200);
         continue;
       }
+      break;
     }
   }
 
   if (lastError instanceof DOMException && lastError.name === 'AbortError') {
-    throw new Error('O servidor demorou para responder. Tente novamente em alguns segundos.');
+    throw new Error('O servidor demorou para responder. Tentamos novamente automaticamente; tente mais uma vez em alguns segundos.');
   }
   if (lastError instanceof TypeError) {
     throw new Error('Não foi possível alcançar o servidor agora. Tentamos novamente automaticamente; tente mais uma vez em instantes.');
