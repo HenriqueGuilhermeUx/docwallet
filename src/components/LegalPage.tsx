@@ -47,6 +47,7 @@ export const PrivacyPage: React.FC = () => {
         <Section title="2. Dados que tratamos">
           <p>Para criar e manter uma conta, podemos tratar nome, e-mail, identificador da conta, senha protegida e telefone quando informado.</p>
           <p>Também tratamos documentos e arquivos enviados pelo usuário, conteúdo de contratos e fluxos, nomes de arquivos, links de compartilhamento, hashes, certificados e registros relacionados ao ciclo documental.</p>
+          <p>Quando o usuário escolhe armazenar documentos como carteira de saúde ou carteira de vacinação, esses arquivos podem conter informações de saúde. Esse conteúdo é fornecido voluntariamente pelo usuário para armazenamento e organização documental; o DocWallet não o utiliza para diagnóstico, tratamento ou monitoramento médico.</p>
           <p>Nos fluxos de assinatura, podemos tratar nome e e-mail dos signatários, telefone e CPF quando informados, assinatura desenhada, frase de confirmação, status de verificação por código, data e hora, endereço IP, navegador, informações técnicas do dispositivo e outros elementos necessários para formar o pacote de evidências.</p>
           <p>A localização exata pode ser coletada apenas quando o próprio usuário autoriza esse recurso durante a assinatura. O DocWallet não usa localização em segundo plano.</p>
         </Section>
