@@ -2,6 +2,16 @@ name: Build Android App
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'scripts/**'
+      - 'play-store/assets/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.ts'
+      - '.github/workflows/android-build.yml'
   push:
     branches:
       - main
@@ -30,16 +40,18 @@ jobs:
           node-version: 24
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install Android API 36
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
       - name: Install dependencies
         run: npm install
@@ -47,7 +59,7 @@ jobs:
       - name: Build web app
         env:
           VITE_DOCWALLET_API_URL: https://docwallet-backend.onrender.com
-          VITE_DOCWALLET_PUBLIC_URL: https://docwallet.netlify.app
+          VITE_DOCWALLET_PUBLIC_URL: https://trydocwallet.com
           VITE_DOCWALLET_CHAIN_ID: 137
           VITE_DOCWALLET_NETWORK_NAME: Polygon
           VITE_DOCWALLET_RPC_URL: https://polygon-rpc.com
