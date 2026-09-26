@@ -4,7 +4,6 @@ import {
   BadgeCheck,
   Brain,
   FileSignature,
-  Fingerprint,
   LogOut,
   Plus,
   Shield,
@@ -17,11 +16,9 @@ import { Document } from '../types/document';
 import { DocumentType } from '../types/document';
 import { AddDocumentModal } from './AddDocumentModal';
 import { AuthModal } from './AuthModal';
-import { BlockchainPage } from './BlockchainPage';
 import { CategoryTabs } from './CategoryTabs';
 import { CertificateHistoryPanel } from './CertificateHistoryPanel';
 import { CertificateLookupPage } from './CertificateLookupPage';
-import { DIDWallet } from './DIDWallet';
 import { DocFlowBusinessPage } from './DocFlowBusinessPage';
 import { DocumentGrid } from './DocumentGrid';
 import { DocumentViewerModal } from './DocumentViewerModal';
@@ -86,8 +83,6 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [shareDocument, setShareDocument] = useState<Document | null>(null);
-  const [showBlockchainModal, setShowBlockchainModal] = useState(false);
-  const [showDIDWallet, setShowDIDWallet] = useState(false);
 
   const userLabel = useMemo(() => user?.email?.split('@')[0] || 'Conta', [user?.email]);
   const userInitial = user?.email?.[0]?.toUpperCase() || 'U';
@@ -250,7 +245,6 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
         documents={documents}
         onDocumentClick={setSelectedDocument}
         onShareDocument={(document) => setShareDocument(document)}
-        onAuthenticateDocument={() => setShowBlockchainModal(true)}
         isLoading={isLoading}
       />
     </>
@@ -261,7 +255,7 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">Comprovar</p>
         <h2 className="text-2xl font-black text-slate-900 mt-1">Provas e confiança</h2>
-        <p className="text-sm text-slate-500 mt-1">Valide integridade, certificados e registros do ciclo documental.</p>
+        <p className="text-sm text-slate-500 mt-1">Confira a integridade de documentos e consulte certificados DocWallet.</p>
       </div>
 
       <CertificateHistoryPanel />
@@ -286,26 +280,10 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
           <p className="font-black text-slate-900 mt-4">Certificado</p>
           <p className="text-xs text-slate-500 mt-1">Consulte certificados DocWallet.</p>
         </button>
+      </div>
 
-        <button
-          type="button"
-          onClick={() => setShowBlockchainModal(true)}
-          className="text-left min-h-32 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm active:scale-[0.99]"
-        >
-          <Fingerprint size={24} className="text-violet-600" />
-          <p className="font-black text-slate-900 mt-4">Blockchain</p>
-          <p className="text-xs text-slate-500 mt-1">Registre ou confira prova de integridade.</p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowDIDWallet(true)}
-          className="text-left min-h-32 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm active:scale-[0.99]"
-        >
-          <Wallet size={24} className="text-amber-600" />
-          <p className="font-black text-slate-900 mt-4">Identidade</p>
-          <p className="text-xs text-slate-500 mt-1">Acesse sua identidade digital beta.</p>
-        </button>
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+        Recursos pagos de registro em blockchain permanecem disponíveis no DocWallet Web e não fazem parte desta versão Android da Google Play.
       </div>
     </div>
   );
@@ -377,17 +355,9 @@ export const NativeDocWalletApp: React.FC<NativeDocWalletAppProps> = ({ initialP
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => setShowAuthModal(false)} />
       )}
 
-      <BlockchainPage isOpen={showBlockchainModal} onClose={() => setShowBlockchainModal(false)} />
-      <DIDWallet isOpen={showDIDWallet} onClose={() => setShowDIDWallet(false)} />
-
       {toast && <Toast message={toast.message} type={toast.type} />}
 
-      <button
-        type="button"
-        onClick={handleLogout}
-        className="sr-only"
-        aria-label="Sair da conta"
-      >
+      <button type="button" onClick={handleLogout} className="sr-only" aria-label="Sair da conta">
         <LogOut size={16} />
       </button>
     </div>
