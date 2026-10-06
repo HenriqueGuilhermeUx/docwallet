@@ -1,7 +1,7 @@
 import { Document, DocumentType, Category } from '../types/document';
 import { useState, useEffect, useCallback } from 'react';
 import { BackendUser, clearSession, readProfile, SESSION_CHANGE_EVENT } from '../lib/backendSession';
-import { validateBackendSession } from '../lib/backendLogin';
+import { loginWithNexaToken, validateBackendSession } from '../lib/backendLogin';
 import {
   listBackendDocuments,
   uploadBackendDocument,
@@ -47,6 +47,31 @@ export const useDocumentsWithAuth = () => {
     window.addEventListener('storage', syncFromStorage);
 
     const initAuth = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const nexaToken = String(params.get('nexaToken') || '').trim();
+
+      if (nexaToken) {
+        params.delete('nexaToken');
+        const nextQuery = params.toString();
+        window.history.replaceState(
+          {},
+          '',
+          `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`,
+        );
+
+        try {
+          const federatedUser = await loginWithNexaToken(nexaToken);
+          if (!mounted) return;
+          setUser(federatedUser);
+          setIsLoading(true);
+          setIsAuthLoading(false);
+          return;
+        } catch (error) {
+          console.warn('Nexa ID federation login failed:', error);
+          // Fall through to an existing DocWallet session when available.
+        }
+      }
+
       const validUser = await validateBackendSession();
       if (!mounted) return;
       setUser(validUser || readProfile());
