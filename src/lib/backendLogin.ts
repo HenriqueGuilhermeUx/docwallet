@@ -81,6 +81,10 @@ export const loginWithBackend = (email: string, password: string) => {
   return postLogin('/api/auth/login', { email, password }, true);
 };
 
+export const loginWithNexaToken = (token: string) => {
+  return postLogin('/api/auth/nexa', { token }, true);
+};
+
 export const registerWithBackend = (name: string, email: string, password: string) => {
   return postLogin('/api/auth/register', { name, email, password }, false);
 };
