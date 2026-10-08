@@ -85,6 +85,37 @@ export const loginWithNexaToken = (token: string) => {
   return postLogin('/api/auth/nexa', { token }, true);
 };
 
+export const linkWithNexaToken = async (token: string) => {
+  const session = readSession();
+  if (!session) throw new Error('Entre na sua conta DocWallet uma vez para vincular o Nexa ID.');
+
+  const response = await fetchWithTimeout(`${requireApiUrl()}/api/auth/nexa/link`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session}`,
+    },
+    body: JSON.stringify({ token }),
+  });
+
+  const text = await response.text();
+  let data: AuthPayload;
+  try {
+    data = text ? JSON.parse(text) : ({ success: false, error: 'Resposta vazia do servidor.' } as AuthPayload);
+  } catch {
+    throw new Error(text || 'Resposta inválida do servidor.');
+  }
+
+  if (!response.ok || data.success === false) {
+    throw new Error(data.error || 'Não foi possível vincular seu Nexa ID.');
+  }
+
+  const sessionValue = data.session || data.token || session;
+  if (!sessionValue || !data.user) throw new Error('Vinculação concluída sem sessão válida.');
+  saveSession(sessionValue, data.user);
+  return data.user;
+};
+
 export const registerWithBackend = (name: string, email: string, password: string) => {
   return postLogin('/api/auth/register', { name, email, password }, false);
 };
