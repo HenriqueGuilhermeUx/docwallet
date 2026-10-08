@@ -1,7 +1,7 @@
 import { Document, DocumentType, Category } from '../types/document';
 import { useState, useEffect, useCallback } from 'react';
 import { BackendUser, clearSession, readProfile, SESSION_CHANGE_EVENT } from '../lib/backendSession';
-import { loginWithNexaToken, validateBackendSession } from '../lib/backendLogin';
+import { linkWithNexaToken, loginWithNexaToken, validateBackendSession } from '../lib/backendLogin';
 import {
   listBackendDocuments,
   uploadBackendDocument,
@@ -15,6 +15,8 @@ interface Toast {
   message: string;
   type: 'success' | 'error' | 'info';
 }
+
+const PENDING_NEXA_LINK_KEY = 'docwallet_pending_nexa_link';
 
 const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -32,15 +34,70 @@ export const useDocumentsWithAuth = () => {
   // the token in the background. This avoids the "logged out" flash on every
   // internal page navigation while still clearing the session on a real 401.
   const [isAuthLoading, setIsAuthLoading] = useState(!cachedProfile);
+  const [nexaLinkRequired, setNexaLinkRequired] = useState(false);
 
   useEffect(() => {
     let mounted = true;
+    let linkingPendingNexa = false;
+
+    const readPendingNexaToken = () => {
+      try {
+        return String(window.sessionStorage.getItem(PENDING_NEXA_LINK_KEY) || '').trim();
+      } catch {
+        return '';
+      }
+    };
+
+    const savePendingNexaToken = (token: string) => {
+      try {
+        window.sessionStorage.setItem(PENDING_NEXA_LINK_KEY, token);
+      } catch {
+        // Session storage is a convenience for the one-time linking flow only.
+      }
+    };
+
+    const clearPendingNexaToken = () => {
+      try {
+        window.sessionStorage.removeItem(PENDING_NEXA_LINK_KEY);
+      } catch {
+        // Ignore browsers where sessionStorage is unavailable.
+      }
+    };
+
+    const completePendingNexaLink = async () => {
+      if (linkingPendingNexa) return;
+      const pendingToken = readPendingNexaToken();
+      if (!pendingToken || !readProfile()) return;
+
+      linkingPendingNexa = true;
+      clearPendingNexaToken();
+      try {
+        const linkedUser = await linkWithNexaToken(pendingToken);
+        if (!mounted) return;
+        setUser(linkedUser);
+        setNexaLinkRequired(false);
+        setIsLoading(true);
+        setIsAuthLoading(false);
+      } catch (error) {
+        savePendingNexaToken(pendingToken);
+        if (!mounted) return;
+        console.warn('Nexa ID account linking failed:', error);
+        setNexaLinkRequired(true);
+        setIsAuthLoading(false);
+      } finally {
+        linkingPendingNexa = false;
+      }
+    };
 
     const syncFromStorage = (event?: Event) => {
       if (!mounted) return;
       const detail = event instanceof CustomEvent ? event.detail as BackendUser | null : undefined;
-      setUser(detail === undefined ? readProfile() : detail);
+      const nextProfile = detail === undefined ? readProfile() : detail;
+      setUser(nextProfile);
       setIsAuthLoading(false);
+      if (nextProfile && readPendingNexaToken()) {
+        void completePendingNexaLink();
+      }
     };
 
     window.addEventListener(SESSION_CHANGE_EVENT, syncFromStorage as EventListener);
@@ -62,13 +119,33 @@ export const useDocumentsWithAuth = () => {
         try {
           const federatedUser = await loginWithNexaToken(nexaToken);
           if (!mounted) return;
+          clearPendingNexaToken();
+          setNexaLinkRequired(false);
           setUser(federatedUser);
           setIsLoading(true);
           setIsAuthLoading(false);
           return;
-        } catch (error) {
+        } catch (error: any) {
           console.warn('Nexa ID federation login failed:', error);
-          // Fall through to an existing DocWallet session when available.
+          if (Number(error?.status) === 409) {
+            savePendingNexaToken(nexaToken);
+
+            const existingUser = await validateBackendSession();
+            if (!mounted) return;
+
+            if (existingUser) {
+              setUser(existingUser);
+              await completePendingNexaLink();
+              return;
+            }
+
+            setNexaLinkRequired(true);
+            setUser(null);
+            setIsLoading(false);
+            setIsAuthLoading(false);
+            return;
+          }
+          // Invalid/expired tokens and transient failures never force account linking.
         }
       }
 
@@ -263,5 +340,6 @@ export const useDocumentsWithAuth = () => {
     isAuthLoading,
     reloadDocuments: loadDocuments,
     refreshAuth,
+    nexaLinkRequired,
   };
 };

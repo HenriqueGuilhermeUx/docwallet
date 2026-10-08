@@ -272,6 +272,7 @@ function App() {
     toast,
     isLoading,
     isAuthLoading,
+    nexaLinkRequired,
   } = useDocumentsWithAuth();
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -280,6 +281,10 @@ function App() {
   const [showBlockchainModal, setShowBlockchainModal] = useState(false);
   const [showDIDWallet, setShowDIDWallet] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+
+  useEffect(() => {
+    if (nexaLinkRequired) setShowAuthModal(true);
+  }, [nexaLinkRequired]);
 
   const handleAddClick = () => {
     if (!user) {
@@ -353,7 +358,7 @@ function App() {
         <Header onAddClick={handleAddClick} user={user} onLogout={handleHeaderAction} />
         <SignaturesPage user={user} onLogin={() => setShowAuthModal(true)} />
         {footer}
-        {showAuthModal && <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => {}} />}
+        {showAuthModal && <AuthModal linkingNexaId={nexaLinkRequired} isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => {}} />}
         {toast && <Toast message={toast.message} type={toast.type} />}
       </div>
     );
@@ -365,7 +370,7 @@ function App() {
         <Header onAddClick={handleAddClick} user={user} onLogout={handleHeaderAction} />
         <IntelligenceDashboard user={user} documents={allDocuments} onLogin={() => setShowAuthModal(true)} />
         {footer}
-        {showAuthModal && <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => {}} />}
+        {showAuthModal && <AuthModal linkingNexaId={nexaLinkRequired} isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => {}} />}
         {toast && <Toast message={toast.message} type={toast.type} />}
       </div>
     );
@@ -378,7 +383,7 @@ function App() {
         <DocFlowBusinessPage user={user} documents={allDocuments} onLogin={() => setShowAuthModal(true)} onAddDocument={handleAddClick} />
         {footer}
         {showAddModal && user && <AddDocumentModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onAdd={handleAddDocument} />}
-        {showAuthModal && <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => {}} />}
+        {showAuthModal && <AuthModal linkingNexaId={nexaLinkRequired} isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => {}} />}
         {toast && <Toast message={toast.message} type={toast.type} />}
       </div>
     );

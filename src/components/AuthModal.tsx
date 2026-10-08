@@ -7,9 +7,15 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  linkingNexaId?: boolean;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  linkingNexaId = false,
+}) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -81,6 +87,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         </div>
 
         <div className="p-6 space-y-4">
+          {linkingNexaId && (
+            <div className="flex items-start gap-3 rounded-xl bg-cyan-50 border border-cyan-200 p-4">
+              <ShieldCheck className="text-cyan-700 mt-0.5" size={20} />
+              <div>
+                <p className="font-semibold text-slate-900 text-sm">Vincular ao seu Nexa ID</p>
+                <p className="text-slate-600 text-sm mt-1">
+                  Encontramos sua conta DocWallet existente. Entre nela uma única vez.
+                  Depois, abrir pela Nexa não exigirá outra senha.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-100 p-4">
             <ShieldCheck className="text-blue-600 mt-0.5" size={20} />
             <div>
