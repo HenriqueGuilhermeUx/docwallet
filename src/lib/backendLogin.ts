@@ -51,7 +51,9 @@ const postLogin = async (path: string, payload: Record<string, string>, retryTra
       }
 
       if (!response.ok || data.success === false) {
-        throw new Error(data.error || 'Erro ao autenticar');
+        const authError = new Error(data.error || 'Erro ao autenticar') as Error & { status?: number };
+        authError.status = response.status;
+        throw authError;
       }
 
       const sessionValue = data.session || data.token || '';
@@ -107,7 +109,9 @@ export const linkWithNexaToken = async (token: string) => {
   }
 
   if (!response.ok || data.success === false) {
-    throw new Error(data.error || 'Não foi possível vincular seu Nexa ID.');
+    const linkError = new Error(data.error || 'Não foi possível vincular seu Nexa ID.') as Error & { status?: number };
+    linkError.status = response.status;
+    throw linkError;
   }
 
   const sessionValue = data.session || data.token || session;
