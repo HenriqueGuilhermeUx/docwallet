@@ -1,5 +1,5 @@
-const CACHE_NAME = "docwallet-pwa-v1";
-const CORE = ["/", "/manifest.json", "/wallet-icon.svg"];
+const CACHE_NAME = "docwallet-pwa-v2";
+const CORE = ["/", "/manifest.json", "/app-icon.png", "/apple-touch-icon.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE)).catch(() => undefined));
