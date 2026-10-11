@@ -1,39 +1,52 @@
 {
+  "id": "/",
   "name": "DocWallet - Carteira Digital",
   "short_name": "DocWallet",
-  "description": "Sua carteira digital de documentos. RG, CNH, CPF, carteiras profissionais e mais.",
+  "description": "Sua carteira digital de documentos, contratos, assinaturas e evidências.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#6366F1",
   "theme_color": "#6366F1",
-  "orientation": "portrait-primary",
+  "lang": "pt-BR",
+  "categories": ["productivity", "utilities", "business"],
   "icons": [
     {
-      "src": "/wallet-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/app-icon.png",
+      "sizes": "100x100",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/wallet-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/wallet-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/app-icon.png",
+      "sizes": "100x100",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["productivity", "utilities"],
-  "lang": "pt-BR",
   "shortcuts": [
     {
-      "name": "Adicionar Documento",
-      "short_name": "Adicionar",
-      "description": "Adicionar novo documento",
-      "url": "/?action=add",
-      "icons": [{ "src": "/wallet-icon.svg", "sizes": "any" }]
+      "name": "Assinaturas",
+      "short_name": "Assinar",
+      "description": "Abrir assinaturas e contratos",
+      "url": "/assinaturas",
+      "icons": [{ "src": "/app-icon.png", "sizes": "100x100", "type": "image/png" }]
+    },
+    {
+      "name": "Modelos",
+      "short_name": "Modelos",
+      "description": "Abrir modelos de contratos",
+      "url": "/modelos",
+      "icons": [{ "src": "/app-icon.png", "sizes": "100x100", "type": "image/png" }]
+    },
+    {
+      "name": "Validar documento",
+      "short_name": "Validar",
+      "description": "Validar hash e autenticidade de documento",
+      "url": "/validar-documento",
+      "icons": [{ "src": "/app-icon.png", "sizes": "100x100", "type": "image/png" }]
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }
