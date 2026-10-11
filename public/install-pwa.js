@@ -1,19 +1,30 @@
-// DocWallet no longer uses the legacy PWA install prompt on the public web app.
-// This file intentionally unregisters old service workers and clears old caches
-// so users do not get stuck on stale versions of the site.
+(() => {
+  if (!("serviceWorker" in navigator)) return;
 
-(async () => {
-  try {
-    if ('serviceWorker' in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((registration) => registration.unregister()));
-    }
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.warn("[DocWallet PWA] service worker não registrado:", error);
+    });
+  });
 
-    if ('caches' in window) {
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+  let deferredPrompt = null;
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredPrompt = event;
+    window.dispatchEvent(new CustomEvent("docwallet:pwa-install-available"));
+  });
+
+  window.DocWalletPWA = {
+    canInstall() {
+      return Boolean(deferredPrompt);
+    },
+    async install() {
+      if (!deferredPrompt) return { outcome: "unavailable" };
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      return choice;
     }
-  } catch (error) {
-    console.warn('DocWallet cache cleanup skipped:', error);
-  }
+  };
 })();
