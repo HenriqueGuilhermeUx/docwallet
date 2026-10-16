@@ -406,7 +406,9 @@ export const SignPage: React.FC = () => {
                       <p className={`text-xs mt-1 ${identity.verified ? 'text-emerald-800' : 'text-sky-800'}`}>
                         {identity.verified
                           ? 'A posse do e-mail convidado foi confirmada por código de uso único e entra na trilha de evidências.'
-                          : `Envie um código para ${identity.maskedEmail || 'o e-mail do convite'} e fortaleça a evidência da assinatura.`}
+                          : identity.required
+                            ? `Este documento exige verificação do e-mail convidado (${identity.maskedEmail || 'e-mail cadastrado'}) antes da assinatura.`
+                            : `Envie um código para ${identity.maskedEmail || 'o e-mail do convite'} e fortaleça a evidência da assinatura.`}
                       </p>
                     </div>
                   </div>
@@ -456,9 +458,9 @@ export const SignPage: React.FC = () => {
 
               <label className="flex gap-3 text-sm text-slate-600"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /> Li, aceito e desejo assinar eletronicamente este contrato pelo DocWallet, com registro das evidências técnicas da assinatura.</label>
               {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">{error}</div>}
-              <button onClick={handleAccept} disabled={!accepted || !name || !signatureTouched || submitting} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={handleAccept} disabled={!accepted || !name || !signatureTouched || submitting || Boolean(identity?.required && !identity?.verified)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
                 {submitting ? <Loader2 className="animate-spin" size={18} /> : <Shield size={18} />}
-                {identity?.verified ? 'Assinar com identidade verificada' : 'Assinar com evidências reforçadas'}
+                {identity?.verified ? 'Assinar com identidade verificada' : identity?.required ? 'Verifique seu e-mail para assinar' : 'Assinar com evidências reforçadas'}
               </button>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">

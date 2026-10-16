@@ -83,6 +83,7 @@ export interface SignatureIdentityConfig {
   emailAvailable: boolean;
   maskedEmail?: string;
   verified: boolean;
+  required?: boolean;
   method?: string | null;
   verifiedAt?: string | null;
   evidenceLevel?: 'reinforced_evidence' | 'verified_evidence';
