@@ -20,6 +20,7 @@ import { DIDWallet } from './components/DIDWallet';
 import { ShareModal } from './components/ShareModal';
 import { PublicDoc } from './components/PublicDoc';
 import { ProductHome } from './components/ProductHome';
+import USPreview from './components/USPreview';
 import { CertificatePage } from './components/CertificatePage';
 import { SignPage } from './components/SignPage';
 import { DeleteAccountPage, PrivacyPage, TermsPage } from './components/LegalPage';
@@ -213,6 +214,10 @@ function IcpReturnGate() {
 }
 
 function App() {
+  if (window.location.pathname.replace(/\/$/, '') === '/us') {
+    return <USPreview />;
+  }
+
   if (window.location.pathname.startsWith('/share/')) {
     return <PublicDoc />;
   }
