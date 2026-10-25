@@ -35,3 +35,9 @@ American signature enforceability, provider selection, identity verification and
 ## Operational browser-only demonstration (2026-10-25)
 
 An English SHA-256 integrity checker was added to `/us`. It uses browser WebCrypto for files under 20 MB, supports comparison to a user-provided 64-character hex digest, and does not upload file contents or persist them. Hash matching is not identity verification, a signature, or legal certification. US signature compliance remains in the separate research/adaptation workstream.
+
+## Interactive preview inventory
+
+- `/us`: English document operations overview and local SHA-256 demonstration.
+- `/us/workspace`: in-memory sample document list, category filter, search and review status. Metadata is `noindex,nofollow` and is restored when the screen unmounts.
+- No real document upload, signature, identity verification or account activation is performed by the sample workspace.
