@@ -22,4 +22,13 @@ assert.ok(!/href=["']\/(app|login|cadastro|criar-conta)/i.test(preview), "US pre
 assert.ok(!/fetch\s*\(/.test(preview), "US preview must not call Brazilian backend APIs");
 assert.ok(css.includes(".avus"), "Styles must use a US-specific namespace");
 assert.ok(!/^\s*(body|html|:root|\*)\s*\{/m.test(css), "US preview styles must not redefine global selectors");
+
+const operational = read("src/components/USHashTool.tsx");
+assert.ok(operational.includes("crypto.subtle.digest"), "USHashTool.tsx expected capability missing: crypto.subtle.digest");
+assert.ok(operational.includes("SHA-256"), "USHashTool.tsx expected capability missing: SHA-256");
+assert.ok(operational.includes("not uploaded"), "USHashTool.tsx expected capability missing: not uploaded");
+assert.ok(!/(fetch|XMLHttpRequest)\s*\(/.test(operational), "Operational US preview must not call backend APIs");
+assert.ok(!/localStorage\s*\.|sessionStorage\s*\./.test(operational), "Demo should not persist potentially identifying visitor input");
+assert.ok(!/href=["']\/(app|login|cadastro|criar-conta)/i.test(operational), "Demo must not send visitors to Brazilian account activation");
+
 console.log("PASS: docwallet US preview route, language, copy, branding, isolation and CSS namespace");
