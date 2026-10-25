@@ -31,4 +31,13 @@ assert.ok(!/(fetch|XMLHttpRequest)\s*\(/.test(operational), "Operational US prev
 assert.ok(!/localStorage\s*\.|sessionStorage\s*\./.test(operational), "Demo should not persist potentially identifying visitor input");
 assert.ok(!/href=["']\/(app|login|cadastro|criar-conta)/i.test(operational), "Demo must not send visitors to Brazilian account activation");
 
+
+const workspace = read("src/components/USWorkspace.tsx");
+assert.ok(entry.includes("/us/workspace"), "English workspace route missing");
+assert.ok(preview.includes('href="/us/workspace"'), "Preview must link to interactive walkthrough");
+assert.match(workspace, /initialDocuments/, "Walkthrough must use sample documents");
+assert.match(workspace, /setDocuments/, "Sample document review interaction missing");
+assert.ok(!/fetch\s*\(/.test(workspace), "Demo must never send data to Brazil APIs");
+assert.ok(!/localStorage|sessionStorage|uploadDocument/.test(workspace), "Demo data must remain in memory");
+
 console.log("PASS: docwallet US preview route, language, copy, branding, isolation and CSS namespace");
