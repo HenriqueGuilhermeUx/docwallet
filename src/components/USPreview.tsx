@@ -51,7 +51,7 @@ export default function USPreview() {
             <p className="avus-subheading">Secure documents & workflow intelligence</p>
             <h1>The right document. The right evidence. A simpler workflow.</h1>
             <p className="avus-intro">A secure place to organize documents, review key information, coordinate approvals and keep track of what changed. Built on DocWallet’s existing document-management architecture.</p>
-            <div className="avus-hero-actions"><a href="#features" className="avus-primary">Explore capabilities <span aria-hidden="true">↗</span></a><a href="#release" className="avus-outline">Launch status</a></div>
+            <div className="avus-hero-actions"><a href="/us/workspace" className="avus-primary">Try the document workspace <span aria-hidden="true">↗</span></a><a href="#release" className="avus-outline">Launch status</a></div>
             <p className="avus-disclaimer">Product localization preview · No US checkout or account activation</p>
           </div>
           <div className="avus-graphic" aria-label="Illustrative operating flow">
