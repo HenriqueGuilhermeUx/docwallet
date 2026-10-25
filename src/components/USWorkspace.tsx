@@ -16,9 +16,22 @@ export default function USWorkspace() {
   useEffect(() => {
     const previousLang = document.documentElement.lang;
     const previousTitle = document.title;
+    const existingRobots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    const robots = existingRobots || document.createElement('meta');
+    const previousRobots = robots.content;
+    if (!existingRobots) {
+      robots.name = 'robots';
+      document.head.appendChild(robots);
+    }
+    robots.content = 'noindex,nofollow';
     document.documentElement.lang = 'en-US';
     document.title = 'DocWallet USA | Document workspace walkthrough';
-    return () => { document.documentElement.lang = previousLang; document.title = previousTitle; };
+    return () => {
+      document.documentElement.lang = previousLang;
+      document.title = previousTitle;
+      if (existingRobots) robots.content = previousRobots;
+      else robots.remove();
+    };
   }, []);
   const filtered = documents.filter(doc => (category === 'All' || doc.category === category) && doc.title.toLowerCase().includes(search.trim().toLowerCase()));
   const pending = documents.filter(doc => doc.status === 'Needs review').length;
