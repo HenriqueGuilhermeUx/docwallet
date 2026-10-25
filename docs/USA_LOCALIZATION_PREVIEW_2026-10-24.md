@@ -31,3 +31,7 @@ American signature enforceability, provider selection, identity verification and
 - [ ] Enable US activation only after region-scoped auth, infrastructure, data residency and entitlements are validated.
 
 **Do not merge, publish, or redirect Brazilian traffic automatically.**
+
+## Operational browser-only demonstration (2026-10-25)
+
+An English SHA-256 integrity checker was added to `/us`. It uses browser WebCrypto for files under 20 MB, supports comparison to a user-provided 64-character hex digest, and does not upload file contents or persist them. Hash matching is not identity verification, a signature, or legal certification. US signature compliance remains in the separate research/adaptation workstream.
