@@ -1,0 +1,37 @@
+name: DocWallet USA browser QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/App.tsx'
+      - 'src/components/USPreview.tsx'
+      - 'src/components/USWorkspace.tsx'
+      - 'src/components/USHashTool.tsx'
+      - 'scripts/usa-docwallet-browser.mjs'
+      - '.github/workflows/usa-browser-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install project dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install ephemeral Playwright QA dependency
+        run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.57.0
+      - name: Build site with disabled test API
+        env:
+          VITE_API_URL: http://127.0.0.1:65535
+        run: npm run build
+      - name: Install Chromium for QA
+        run: npx playwright install --with-deps chromium
+      - name: Exercise DocWallet US flows in Chromium
+        env:
+          VITE_API_URL: http://127.0.0.1:65535
+        run: node scripts/usa-docwallet-browser.mjs
