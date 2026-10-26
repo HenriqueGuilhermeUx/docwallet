@@ -24,6 +24,7 @@ export interface USVerifiedEvidenceReceipt {
   signatureValid: boolean
   documentMatched: boolean
   signerMatched: boolean
+  eventMatched: boolean
   trustedKeyMatched: boolean
   verified: boolean
   signerIdentityLegallyVerified: false
@@ -71,6 +72,7 @@ export async function verifyUSOfflineEvidenceReceipt(
   expectedDocumentSha256: string,
   expectedSignerOpaqueId: string,
   expectedIssuerId: string,
+  expectedEventId: string,
 ): Promise<USVerifiedEvidenceReceipt> {
   const message = canonicalUSReceiptBytes(receipt)
   if (!(receiptSignature instanceof Uint8Array) ||
@@ -80,7 +82,7 @@ export async function verifyUSOfflineEvidenceReceipt(
       !hexDigest.test(independentlyPinnedSpkiSha256) ||
       !hexDigest.test(expectedDocumentSha256) ||
       !safeOpaque.test(expectedSignerOpaqueId) ||
-      !safeOpaque.test(expectedIssuerId)) {
+      !safeOpaque.test(expectedIssuerId) || !uuid.test(expectedEventId)) {
     throw new Error("Untrusted US evidence verification parameters")
   }
 
@@ -91,10 +93,11 @@ export async function verifyUSOfflineEvidenceReceipt(
   const documentMatched = receipt.documentSha256.toLowerCase() === expectedDocumentSha256.toLowerCase()
   const signerMatched = receipt.signerOpaqueId === expectedSignerOpaqueId &&
     receipt.sourceIssuerId === expectedIssuerId
+  const eventMatched = receipt.eventId.toLowerCase() === expectedEventId.toLowerCase()
   // DO NOT import arbitrary unpinned public keys, even transiently.
-  if (!trustedKeyMatched || !documentMatched || !signerMatched) {
+  if (!trustedKeyMatched || !documentMatched || !signerMatched || !eventMatched) {
     return {
-      signatureValid: false, documentMatched, signerMatched, trustedKeyMatched,
+      signatureValid: false, documentMatched, signerMatched, eventMatched, trustedKeyMatched,
       verified: false, signerIdentityLegallyVerified: false, signingValidityEstablished: false,
     }
   }
@@ -112,7 +115,7 @@ export async function verifyUSOfflineEvidenceReceipt(
     signatureValid = false
   }
   return {
-    signatureValid, documentMatched, signerMatched, trustedKeyMatched,
+    signatureValid, documentMatched, signerMatched, eventMatched, trustedKeyMatched,
     verified: signatureValid,
     signerIdentityLegallyVerified: false,
     signingValidityEstablished: false,
