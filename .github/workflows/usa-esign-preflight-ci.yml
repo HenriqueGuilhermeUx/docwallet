@@ -26,6 +26,6 @@ jobs:
         with:
           deno-version: v2.x
       - name: Strict US E-SIGN evidence policy typecheck
-        run: deno check --config tests/usa/deno.json tests/usa/esignEvidencePreflight.test.ts tests/usa/esignByteIntegrity.test.ts
+        run: deno check --config tests/usa/deno.json tests/usa/esignEvidencePreflight.test.ts tests/usa/esignByteIntegrity.test.ts tests/usa/esignReceiptVerifier.test.ts
       - name: Synthetic E-SIGN and consumer-consent exception tests
-        run: deno test --config tests/usa/deno.json tests/usa/esignEvidencePreflight.test.ts tests/usa/esignByteIntegrity.test.ts
+        run: deno test --config tests/usa/deno.json tests/usa/esignEvidencePreflight.test.ts tests/usa/esignByteIntegrity.test.ts tests/usa/esignReceiptVerifier.test.ts
