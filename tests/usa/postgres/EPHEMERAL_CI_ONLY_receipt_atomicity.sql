@@ -137,5 +137,38 @@ BEGIN
  RAISE NOTICE 'PASS: atomic receipt pair, replay, cross-tenant replay, partial conflicts and no client grants';
 END
 $test$;
+-- Prove default-deny RLS under impersonated SQL roles, not merely absence
+-- of ordinary SQL GRANT. Temporary test grants disappear with ROLLBACK.
+GRANT USAGE ON SCHEMA usa_esign_ci TO usa_esign_anon_ci, usa_esign_authenticated_ci;
+GRANT SELECT ON usa_esign_ci.signed_receipts TO usa_esign_anon_ci, usa_esign_authenticated_ci;
+GRANT INSERT ON usa_esign_ci.signed_receipts TO usa_esign_authenticated_ci;
+SET LOCAL ROLE usa_esign_anon_ci;
+DO $rls_anon$
+BEGIN
+ IF (SELECT count(*) FROM usa_esign_ci.signed_receipts) <> 0 THEN
+   RAISE EXCEPTION 'anonymous bypassed receipt tenant RLS';
+ END IF;
+END $rls_anon$;
+RESET ROLE;
+SET LOCAL ROLE usa_esign_authenticated_ci;
+DO $rls_auth$
+DECLARE denied boolean := false;
+BEGIN
+ IF (SELECT count(*) FROM usa_esign_ci.signed_receipts) <> 0 THEN
+   RAISE EXCEPTION 'authenticated client saw private receipt rows';
+ END IF;
+ BEGIN
+   INSERT INTO usa_esign_ci.signed_receipts
+    (tenant_id,issuer_id,actor_id,event_id,event_kind,document_sha256,canonical_receipt_sha256,occurred_at)
+   VALUES('11111111-1111-4111-8111-111111111111',
+     'issuer_syn','actor_syn','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+     'document_viewed',repeat('a',64),repeat('1',64),'2026-10-26 10:00:00+00');
+ EXCEPTION WHEN insufficient_privilege THEN denied := true;
+ END;
+ IF NOT denied THEN RAISE EXCEPTION 'authenticated client inserted receipt despite RLS'; END IF;
+ RAISE NOTICE 'PASS: actual anon/authenticated SQL roles are denied by receipt RLS';
+END $rls_auth$;
+RESET ROLE;
+
 ROLLBACK;
 -- ROLLBACK also drops all synthetic schema, roles and test rows.
