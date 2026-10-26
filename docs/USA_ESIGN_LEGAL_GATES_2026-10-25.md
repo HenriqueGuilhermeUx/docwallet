@@ -31,3 +31,12 @@ No signing endpoint, payment, database, identity provider, cryptographic certifi
 5. Synthetic-to-provider contract tests on a separate US identity/e-sign environment, legal signoff and explicit release authorization.
 
 **Status:** branch-only policy/tests, not ready for public use; never merge or deploy without approval.
+
+
+## 2026-10-25 — exact-document integrity and CI remediation
+
+- Resolved a Deno syntax-check failure caused by escaped line breaks in the new US-only policy source (commit `96220b3`). The subsequent isolated policy CI and web CI passed on that commit.
+- Added `src/usa/esignByteIntegrity.ts`: requires the *exact retained canonical document bytes* and compares their calculated SHA-256 to the expected reviewed evidence hash. Rejects an empty or oversized document; a mismatch forces `NEEDS_EVIDENCE` even when every other evidence flag is asserted true.
+- Added `tests/usa/esignByteIntegrity.test.ts`: synthetic tests for altered bytes, a byte-buffer slice, wrong hash, empty/oversized documents, and special-category exceptions. Included in US-only isolated CI.
+- The hash comparison proves only that the bytes presented match the claimed digest. It **does not** verify who supplied the digest, prove that the signer viewed that exact version, validate signatures or cryptographic identity, establish timestamp truth, prove consumer notice or certify enforceability. A production implementation must bind the hash to an authenticated, immutable signing and retention trail, and independently verify signer actions.
+- The preflight and byte-integrity modules remain disconnected from any production UI/backend. They do not sign anything or process real documents.
