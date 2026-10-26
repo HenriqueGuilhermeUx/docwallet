@@ -15,7 +15,7 @@ const original: USEvidenceReceiptV1 = {
   occurredAt: "2026-10-25T22:00:00Z",
 }
 const hex = async (buf: Uint8Array) =>
-  Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", buf)))
+  Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(buf).buffer)))
     .map(x => x.toString(16).padStart(2,"0")).join("")
 
 async function setup() {
@@ -26,7 +26,7 @@ async function setup() {
   const pin = await hex(publicSpki)
   const sign = async (r: USEvidenceReceiptV1) =>
     new Uint8Array(await crypto.subtle.sign(
-      { name: "ECDSA", hash: "SHA-256" }, pair.privateKey, canonicalUSReceiptBytes(r),
+      { name: "ECDSA", hash: "SHA-256" }, pair.privateKey, new Uint8Array(canonicalUSReceiptBytes(r)).buffer,
     ))
   const verify = (r: USEvidenceReceiptV1, sig: Uint8Array, expected = original, trustedPin = pin) =>
     verifyUSOfflineEvidenceReceipt(
