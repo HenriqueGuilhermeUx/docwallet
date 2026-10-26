@@ -36,6 +36,18 @@ const uuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89aAbB][0-9a-f
 const safeOpaque = /^[A-Za-z0-9_-]{3,128}$/
 
 function assertReceipt(r: USEvidenceReceiptV1): void {
+  // A caller must not smuggle unsigned fields like "verified", "consent",
+  // "legalValidity" or extra metadata into a signed object. Unknown
+  // properties are excluded by the positional encoder, so reject them.
+  const exactFields = [
+    "version", "eventId", "eventType", "documentSha256",
+    "signerOpaqueId", "sourceIssuerId", "occurredAt",
+  ]
+  if (!r || typeof r !== "object" ||
+      Object.keys(r).length !== exactFields.length ||
+      exactFields.some(key => !Object.prototype.hasOwnProperty.call(r,key))) {
+    throw new Error("Unexpected unsigned US receipt metadata")
+  }
   if (!r || r.version !== "docwallet-us-evidence-v1" ||
       !uuid.test(r.eventId) ||
       !["document_viewed", "sign_intent_recorded"].includes(r.eventType) ||
