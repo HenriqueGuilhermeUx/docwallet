@@ -58,3 +58,11 @@ No signing endpoint, payment, database, identity provider, cryptographic certifi
 - The CI proves PostgreSQL-level uniqueness and statement atomicity **for this standalone synthetic fixture**, not a deployed integration. It does NOT independently attest signer identity, signed receipt integrity, tenant authorization, real-world append-only server operations, retention, security-owner setup or legal enforceability.
 - Before US release: provision a wholly separate US instance, a least-privilege authenticated server writer, independently pinned signing issuer keys with rotation/revocation, real transaction/connection tests, negative API auth/RLS/role tests, audit retention and operational reconciliation. Do not copy this synthetic fixture into a production migration.
 - Verified on GitHub Actions: `DocWallet USA Ephemeral PostgreSQL Receipt Contract` run `40382138463` passed for commit `a933125`.
+
+
+## 2026-10-26 — real two-session receipt replay race
+
+- `tests/usa/postgres/EPHEMERAL_CI_ONLY_receipt_race_setup.sql` and `EPHEMERAL_CI_ONLY_receipt_race.py` extend the PostgreSQL 17 disposable contract workflow. They require the exact disposable database name and synthetic-only session guard.
+- Writer A inserts the synthetic view/intent pair and keeps its transaction open. A concurrent writer B attempts to insert the **same issuer/event IDs** and must block on uniqueness until the short lock timeout. After A commits, any re-submission must be denied, with exactly two rows remaining.
+- Verifies only database concurrency behavior of the test fixture. It does not validate signature issuer provenance in the DB layer, real human assent, row-level tenant rights, custody of signing keys, a certified timestamp, actual production idempotency or enforceability.
+- No SQL executed in an existing user Supabase database and no signing workflow activated. Exact-head CI result for this new test must pass before calling it verified.
