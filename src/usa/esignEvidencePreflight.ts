@@ -67,7 +67,7 @@ export interface USSignaturePreflightReport {
   sourceSections: ["15 USC 7001", "15 USC 7002", "15 USC 7003"]
 }
 
-const SPECIAL_KINDS: USRecordKind[] = [
+const US_STATES = new Set("AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC".split(" "))\n\nconst SPECIAL_KINDS: USRecordKind[] = [
   "will_or_testamentary_trust",
   "family_law",
   "court_document",
@@ -78,7 +78,7 @@ const SPECIAL_KINDS: USRecordKind[] = [
 
 export function evaluateUSSignatureEvidence(input: USSignaturePreflightRequest): USSignaturePreflightReport {
   if (!input || !input.signature ||
-      typeof input.state !== "string" || !/^[A-Z]{2}$/.test(input.state) ||
+      typeof input.state !== "string" || !US_STATES.has(input.state) ||\n      typeof input.requiresNotarizationOrWitnessing !== "boolean" ||
       !["ordinary_commercial_agreement","consumer_written_notice",...SPECIAL_KINDS].includes(input.recordKind)) {
     throw new Error("Invalid US e-sign preflight request")
   }
