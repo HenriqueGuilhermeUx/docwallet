@@ -49,3 +49,12 @@ No signing endpoint, payment, database, identity provider, cryptographic certifi
 - A **valid receipt verifies only the service key's assertion**. It does not independently authenticate the human signer, establish that they viewed or signed the final version, establish a trustworthy clock, confirm notarization, or prove US contract enforceability.
 - The signature verifier is a pure test contract. Real ingestion must obtain keys from a trusted, audited key registry with issuer isolation, key rotation/revocation and timestamp evidence. A database must enforce event-ID uniqueness and idempotency to block replay of the **same** valid event; signed data alone cannot prevent duplicate reuse.
 - CI uses Deno WebCrypto with fully synthetic keys. No existing Brazil signing implementation is imported or changed.
+
+
+## 2026-10-26 — executable PostgreSQL receipt ledger tests in CI
+
+- `tests/usa/postgres/EPHEMERAL_CI_ONLY_receipt_atomicity.sql` is exercised by `.github/workflows/usa-esign-postgres-ci.yml` in **PostgreSQL 17**, on an automatically discarded `usa_contract_ci` database. It requires a special session flag; running without the flag is expected to fail.
+- The test creates a private synthetic receipt table with the **global `PRIMARY KEY (issuer_id, event_id)`**, protects it with RLS plus revoked client grants, and defines a `SECURITY INVOKER` two-event insert that rejects any partial insert. It tests first insertion, same-tenant replay, cross-tenant replay, a one-row conflict that MUST roll back the other row, and zero schema residue after rollback.
+- The CI proves PostgreSQL-level uniqueness and statement atomicity **for this standalone synthetic fixture**, not a deployed integration. It does NOT independently attest signer identity, signed receipt integrity, tenant authorization, real-world append-only server operations, retention, security-owner setup or legal enforceability.
+- Before US release: provision a wholly separate US instance, a least-privilege authenticated server writer, independently pinned signing issuer keys with rotation/revocation, real transaction/connection tests, negative API auth/RLS/role tests, audit retention and operational reconciliation. Do not copy this synthetic fixture into a production migration.
+- Verified on GitHub Actions: `DocWallet USA Ephemeral PostgreSQL Receipt Contract` run `40382138463` passed for commit `a933125`.
