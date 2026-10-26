@@ -90,3 +90,21 @@ Deno.test("rejects invalid source dates, malformed IDs and unsigned empty signat
   const t = await setup()
   await assert.rejects(t.verify(original, new Uint8Array(0)))
 })
+
+
+Deno.test("unsigned extra properties cannot be smuggled into a correctly signed receipt", async () => {
+  for (const extra of [
+    { legalValidityEstablished: true },
+    { userConsentVerified: true },
+    { documentSha256Override: "b".repeat(64) },
+  ]) {
+    const injected = Object.assign({}, original, extra) as USEvidenceReceiptV1
+    assert.throws(() => canonicalUSReceiptBytes(injected), /unsigned US receipt metadata/)
+  }
+  const t = await setup()
+  const sig = await t.sign(original)
+  await assert.rejects(
+    t.verify({ ...original, legalValidityEstablished: true } as USEvidenceReceiptV1, sig),
+    /unsigned US receipt metadata/,
+  )
+})
