@@ -40,3 +40,12 @@ No signing endpoint, payment, database, identity provider, cryptographic certifi
 - Added `tests/usa/esignByteIntegrity.test.ts`: synthetic tests for altered bytes, a byte-buffer slice, wrong hash, empty/oversized documents, and special-category exceptions. Included in US-only isolated CI.
 - The hash comparison proves only that the bytes presented match the claimed digest. It **does not** verify who supplied the digest, prove that the signer viewed that exact version, validate signatures or cryptographic identity, establish timestamp truth, prove consumer notice or certify enforceability. A production implementation must bind the hash to an authenticated, immutable signing and retention trail, and independently verify signer actions.
 - The preflight and byte-integrity modules remain disconnected from any production UI/backend. They do not sign anything or process real documents.
+
+
+## 2026-10-25 — cryptographic evidence issuer receipt V1
+
+- `src/usa/esignReceiptVerifier.ts`: offline verification of a server-issued **ECDSA P-256/SHA-256** receipt over a canonical, versioned payload (event UUID, event type, document SHA-256, opaque signer/issuer references, event timestamp). It verifies a separately pinned SPKI key SHA-256 and checks that document, actor, issuer and event ID match independently supplied expectations. A false pin or altered receipt cannot pass.
+- `tests/usa/esignReceiptVerifier.test.ts`: ephemeral synthetic ECDSA key, signed original, tampered document/event/signer/issuer and mismatched pin/signature negative tests. No signing provider credentials or real client documents.
+- A **valid receipt verifies only the service key's assertion**. It does not independently authenticate the human signer, establish that they viewed or signed the final version, establish a trustworthy clock, confirm notarization, or prove US contract enforceability.
+- The signature verifier is a pure test contract. Real ingestion must obtain keys from a trusted, audited key registry with issuer isolation, key rotation/revocation and timestamp evidence. A database must enforce event-ID uniqueness and idempotency to block replay of the **same** valid event; signed data alone cannot prevent duplicate reuse.
+- CI uses Deno WebCrypto with fully synthetic keys. No existing Brazil signing implementation is imported or changed.
