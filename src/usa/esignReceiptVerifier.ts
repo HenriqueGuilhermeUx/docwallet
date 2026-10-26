@@ -109,7 +109,7 @@ export async function verifyUSOfflineEvidenceReceipt(
     )
     signatureValid = await crypto.subtle.verify(
       { name: "ECDSA", hash: "SHA-256" },
-      key, receiptSignature.slice(), message,
+      key, new Uint8Array(receiptSignature).buffer, new Uint8Array(message).buffer,
     )
   } catch {
     signatureValid = false
