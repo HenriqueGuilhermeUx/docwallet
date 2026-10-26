@@ -66,3 +66,10 @@ No signing endpoint, payment, database, identity provider, cryptographic certifi
 - Writer A inserts the synthetic view/intent pair and keeps its transaction open. A concurrent writer B attempts to insert the **same issuer/event IDs** and must block on uniqueness until the short lock timeout. After A commits, any re-submission must be denied, with exactly two rows remaining.
 - Verifies only database concurrency behavior of the test fixture. It does not validate signature issuer provenance in the DB layer, real human assent, row-level tenant rights, custody of signing keys, a certified timestamp, actual production idempotency or enforceability.
 - No SQL executed in an existing user Supabase database and no signing workflow activated. Exact-head CI result for this new test must pass before calling it verified.
+
+
+## 2026-10-26 — exact service receipt envelope schema
+
+- Hardened `esignReceiptVerifier.ts` to reject **all unexpected enumerable receipt fields** before canonical encoding or signature verification. Such fields were not included in the previous positional payload and could otherwise misleadingly assert `legalValidityEstablished`, `userConsentVerified` or another unbound status.
+- Synthetic Deno cases verify rejection of forged unsigned consent/validity attributes with an otherwise valid original service signature. Existing receipt verification and anti-replay ledger gates still apply.
+- This is service-key evidence integrity, not a legal E-SIGN attestation, human identity verification or demonstrated acceptance. No provider connected.
