@@ -35,7 +35,15 @@ async function fixture() {
   const events = new Set<string>()
   let writes = 0
   const deps: USReceiptLedgerDependencies = {
-    servicePublicKeySpki: spki, independentlyPinnedSpkiSha256: pin,
+    trustedIssuerKey: {
+      issuerId: a.sourceIssuerId,
+      verifiedServiceSpki: spki,
+      independentlyPinnedSpkiSha256: pin,
+      activatedAt: "2026-10-01T00:00:00Z",
+      expiresAt: "2026-12-01T00:00:00Z",
+      revokedAt: null,
+    },
+    serverReceivedAt: "2026-10-26T10:00:00Z",
     expected: {
       documentSha256: a.documentSha256, signerOpaqueId: a.signerOpaqueId,
       sourceIssuerId: a.sourceIssuerId, viewedEventId: viewedId, intentEventId: intentId,
@@ -100,4 +108,30 @@ Deno.test("queue acceptance, partial insertion or wrong ACK ID cannot report per
     assert.equal(result.accepted, false)
     assert.equal(result.reason, "REPLAY_OR_COMMIT_UNVERIFIED")
   }
+})
+
+
+Deno.test("revoked service key denies ledger writes even when original ECDSA signatures are correct", async () => {
+  const f = await fixture()
+  const result = await acceptUSReceiptSequenceInLedger(f.sequence, {
+    ...f.deps,
+    trustedIssuerKey: {
+      ...f.deps.trustedIssuerKey, revokedAt: "2026-10-26T09:00:00Z",
+    },
+  })
+  assert.equal(result.accepted, false)
+  assert.equal(result.reason, "BAD_EVIDENCE")
+  assert.equal(f.writes, 0)
+})
+
+Deno.test("expired issuer keys cannot newly commit signed receipts", async () => {
+  const f = await fixture()
+  const result = await acceptUSReceiptSequenceInLedger(f.sequence, {
+    ...f.deps,
+    trustedIssuerKey: {
+      ...f.deps.trustedIssuerKey, expiresAt: "2026-10-26T09:00:00Z",
+    },
+  })
+  assert.equal(result.accepted, false)
+  assert.equal(f.writes, 0)
 })
