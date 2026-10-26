@@ -6,14 +6,16 @@
  * UNIQUE(issuer, event_id) and atomic pair insert can enforce real replay
  * prevention. This module calls an injected adapter; it implements NO DB.
  */
+import type { USSignedReceiptEnvelope } from "./esignReceiptSequence.ts"
 import {
-  verifyUSReceiptSequence, type USSignedReceiptEnvelope,
-} from "./esignReceiptSequence.ts"
+  verifyUSReceiptSequenceWithActiveIssuer, type USTrustedIssuerKey,
+} from "./esignTrustedIssuerKey.ts"
 
 export interface USReceiptLedgerDependencies {
-  /** Independent pinned registry, never the receipt's embedded key. */
-  servicePublicKeySpki: Uint8Array
-  independentlyPinnedSpkiSha256: string
+  /** Independent, trusted US issuer registry, never receipt-supplied metadata. */
+  trustedIssuerKey: USTrustedIssuerKey
+  /** Server-observed evidence intake time, not untrusted receipt.occurredAt. */
+  serverReceivedAt: string
   expected: {
     documentSha256: string
     signerOpaqueId: string
@@ -48,9 +50,8 @@ export async function acceptUSReceiptSequenceInLedger(
   sequence: readonly USSignedReceiptEnvelope[],
   deps: USReceiptLedgerDependencies,
 ): Promise<USReceiptLedgerDecision> {
-  const verified = await verifyUSReceiptSequence(
-    sequence, deps.servicePublicKeySpki,
-    deps.independentlyPinnedSpkiSha256, deps.expected,
+  const verified = await verifyUSReceiptSequenceWithActiveIssuer(
+    sequence, deps.trustedIssuerKey, deps.serverReceivedAt, deps.expected,
   )
   if (verified.status !== "CONSISTENT_SERVICE_ASSERTIONS") {
     return { accepted: false, reason: "BAD_EVIDENCE", legalValidityEstablished: false }
