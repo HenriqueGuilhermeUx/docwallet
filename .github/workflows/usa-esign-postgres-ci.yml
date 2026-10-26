@@ -1,0 +1,58 @@
+name: DocWallet USA Ephemeral PostgreSQL Receipt Contract
+
+on:
+  push:
+    branches:
+      - feature/usa-esign-legal-gates-20261025
+    paths:
+      - 'tests/usa/postgres/**'
+      - '.github/workflows/usa-esign-postgres-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-replay-ledger:
+    name: Disposable Postgres 17 anti-replay transaction tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_test_only
+          POSTGRES_DB: usa_contract_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d usa_contract_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify non-ephemeral SQL guard blocks accidental execution
+        env:
+          PGPASSWORD: synthetic_test_only
+        run: |
+          if psql -h localhost -U postgres -d usa_contract_ci -v ON_ERROR_STOP=1 \
+            -f tests/usa/postgres/EPHEMERAL_CI_ONLY_receipt_atomicity.sql > /tmp/usa-guard.log 2>&1; then
+            echo "Unexpected unarmed USA database contract execution" && exit 1
+          fi
+          grep -q 'REFUSING NON-EPHEMERAL USA DOCWALLET TEST' /tmp/usa-guard.log
+      - name: Test two-event transactional insert and unique issuer/event anti-replay
+        env:
+          PGPASSWORD: synthetic_test_only
+          PGOPTIONS: -c app.usa_ephemeral_contract_ci=SYNTHETIC_ONLY
+        run: |
+          psql -h localhost -U postgres -d usa_contract_ci -v ON_ERROR_STOP=1 \
+            -f tests/usa/postgres/EPHEMERAL_CI_ONLY_receipt_atomicity.sql
+      - name: Confirm synthetic schema rolled back
+        env:
+          PGPASSWORD: synthetic_test_only
+        run: |
+          psql -h localhost -U postgres -d usa_contract_ci -At -v ON_ERROR_STOP=1 \
+            -c "select case when to_regnamespace('usa_esign_ci') is null then 'PASS' else 'FAIL' end" \
+            | grep -qx PASS
