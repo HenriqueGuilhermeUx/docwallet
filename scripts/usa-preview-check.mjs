@@ -20,9 +20,9 @@ assert.match(preview, /preview/i, "US preview must identify non-live scope");
 assert.match(preview, /checkout/i, "US preview must explicitly block unauthorized US commerce");
 assert.ok(!/href=["']\/(app|login|cadastro|criar-conta)/i.test(preview), "US preview must not link directly to Brazilian signup");
 assert.ok(!/fetch\s*\(/.test(preview), "US preview must not call Brazilian backend APIs");
-assert.ok(!/href\\s*=\\s*["']https?:\\/\\//i.test(preview), "US preview must not navigate to external (including Brazilian) sites");
+assert.ok(!/href\s*=\s*["']https?:\/\//i.test(preview), "US preview must not navigate to external (including Brazilian) sites");
 assert.match(preview, /No live accounts or services/, "US footer must disclose non-live demo scope");
-for (const match of preview.matchAll(/href\\s*=\\s*["'](\\/[^"'?#]*)/g)) {
+for (const match of preview.matchAll(/href\s*=\s*["'](\/[^"'?#]*)/g)) {
   assert.ok(["/us", "/us/workspace"].includes(match[1]), "US preview links must stay on isolated US routes: " + match[1]);
 }
 
