@@ -1,0 +1,10 @@
+# Dedicated USA preview ONLY. Select as Netlify Package directory:
+# deploy/netlify/docwallet (Base directory unset).
+# Never select this configuration on the Brazilian DocWallet project.
+[build]
+  base = "."
+  command = "node scripts/usa-netlify-site-guard.mjs && npm install --no-audit --no-fund && npx vite build --config vite.usa.config.ts && node scripts/usa-netlify-isolation-check.mjs"
+  publish = "dist-usa-docwallet"
+
+[build.environment]
+  NODE_VERSION = "22"
