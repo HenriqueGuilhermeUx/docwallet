@@ -7,7 +7,9 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { chromium } from 'playwright';
 
 const base = 'http://127.0.0.1:4181';
-const server = spawn(process.execPath, [resolve('node_modules/vite/bin/vite.js'), 'preview', '--host', '127.0.0.1', '--port', '4181', '--strictPort'], {
+const previewArgs = [resolve('node_modules/vite/bin/vite.js'), 'preview', '--host', '127.0.0.1', '--port', '4181', '--strictPort'];
+if (process.env.USA_VITE_CONFIG) previewArgs.push('--config', process.env.USA_VITE_CONFIG);
+const server = spawn(process.execPath, previewArgs, {
   stdio: ['ignore', 'pipe', 'pipe'],
   env: { ...process.env, VITE_API_URL: 'http://127.0.0.1:65535' },
 });
