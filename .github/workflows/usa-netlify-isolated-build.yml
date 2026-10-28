@@ -5,6 +5,8 @@ on:
     paths:
       - 'usa-preview/**'
       - 'vite.usa.config.ts'
+      - 'deploy/netlify/docwallet/netlify.toml'
+      - 'scripts/usa-netlify-site-guard.mjs'
       - 'src/components/USPreview.tsx'
       - 'src/components/USWorkspace.tsx'
       - 'src/components/USHashTool.tsx'
@@ -32,6 +34,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate dedicated Netlify config and reject wrong site, branch and inherited API
+        run: |
+          SITE_ID=a5b1cda8-535a-4db2-b01f-07f41c30be76 BRANCH=feature/usa-localized-preview-20261024 CONTEXT=production node scripts/usa-netlify-site-guard.mjs
+          if SITE_ID=wrong BRANCH=feature/usa-localized-preview-20261024 CONTEXT=production node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if SITE_ID=a5b1cda8-535a-4db2-b01f-07f41c30be76 BRANCH=main CONTEXT=production node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if SITE_ID=a5b1cda8-535a-4db2-b01f-07f41c30be76 BRANCH=feature/usa-localized-preview-20261024 CONTEXT=production VITE_DOCWALLET_API_URL=https://example.invalid node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Build USA-only artifact
