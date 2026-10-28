@@ -1,0 +1,32 @@
+name: USA localization guard
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/App.tsx'
+      - 'src/components/USPreview.tsx'
+      - 'src/components/USPreview.css'
+      - 'src/components/USWorkspace.tsx'
+      - 'src/components/USHashTool.tsx'
+      - 'src/components/USHashTool.css'
+      - 'scripts/usa-preview-check.mjs'
+      - '.github/workflows/usa-localization-guard.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact checked-out revision
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate US localization boundary
+        run: node scripts/usa-preview-check.mjs

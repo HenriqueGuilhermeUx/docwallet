@@ -1,0 +1,76 @@
+name: DocWallet USA standalone Netlify artifact
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'usa-preview/**'
+      - 'vite.usa.config.ts'
+      - 'deploy/netlify/docwallet/netlify.toml'
+      - 'scripts/usa-netlify-site-guard.mjs'
+      - 'src/components/USPreview.tsx'
+      - 'src/components/USWorkspace.tsx'
+      - 'src/components/USHashTool.tsx'
+      - 'src/components/USPreview.css'
+      - 'src/components/USHashTool.css'
+      - 'scripts/usa-netlify-isolation-check.mjs'
+      - 'scripts/usa-docwallet-browser.mjs'
+      - '.github/workflows/usa-netlify-isolated-build.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact PR HEAD
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate exact Netlify site, commit and deny inherited provider credentials
+        run: |
+          export SITE_ID=a5b1cda8-535a-4db2-b01f-07f41c30be76
+          export SITE_NAME=av-usa-docwallet
+          export BRANCH=feature/usa-localized-preview-20261024
+          export CONTEXT=production
+          export NETLIFY=true
+          export COMMIT_REF="$(git rev-parse HEAD)"
+          node scripts/usa-netlify-site-guard.mjs
+          if SITE_ID=wrong node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if SITE_NAME=wrong node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if BRANCH=main node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if CONTEXT=deploy-preview node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if NETLIFY=false node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if COMMIT_REF=0000000000000000000000000000000000000000 node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if VITE_DOCWALLET_API_URL=https://example.invalid node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if SUPABASE_URL=https://example.invalid node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if PRIVY_APP_ID=synthetic node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if BACKEND_URL=https://example.invalid node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build USA-only artifact
+        run: npx vite build --config vite.usa.config.ts
+      - name: Reject Brazilian routes, providers and unsafe headers
+        run: node scripts/usa-netlify-isolation-check.mjs
+      - name: Install ephemeral browser QA
+        run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.57.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Exercise USA-only browser flows
+        env:
+          USA_VITE_CONFIG: vite.usa.config.ts
+        run: node scripts/usa-docwallet-browser.mjs
+      - name: Preserve review-only artifact (no deployment)
+        uses: actions/upload-artifact@v4
+        with:
+          name: docwallet-usa-netlify-standalone
+          path: dist-usa-docwallet/
+          if-no-files-found: error
+          retention-days: 7
