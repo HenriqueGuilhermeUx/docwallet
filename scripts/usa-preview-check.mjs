@@ -44,7 +44,7 @@ assert.ok(preview.includes('href="/us/workspace"'), "Preview must link to intera
 assert.match(workspace, /initialDocuments/, "Walkthrough must use sample documents");
 assert.match(workspace, /setDocuments/, "Sample document review interaction missing");
 assert.ok(!/fetch\s*\(/.test(workspace), "Demo must never send data to Brazil APIs");
-assert.ok(!/href\\s*=\\s*["\x27]https?:\\/\\//i.test(workspace), "US workspace must not navigate to external sites");
+assert.ok(!/href\s*=\s*["']https?:\/\//i.test(workspace), "US workspace must not navigate to external sites");
 assert.ok(!/localStorage|sessionStorage|uploadDocument/.test(workspace), "Demo data must remain in memory");
 
 console.log("PASS: docwallet US preview route, language, copy, branding, isolation and CSS namespace");
