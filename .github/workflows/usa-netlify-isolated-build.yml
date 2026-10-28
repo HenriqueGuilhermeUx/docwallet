@@ -34,12 +34,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate dedicated Netlify config and reject wrong site, branch and inherited API
+      - name: Validate exact Netlify site, commit and deny inherited provider credentials
         run: |
-          SITE_ID=a5b1cda8-535a-4db2-b01f-07f41c30be76 BRANCH=feature/usa-localized-preview-20261024 CONTEXT=production node scripts/usa-netlify-site-guard.mjs
-          if SITE_ID=wrong BRANCH=feature/usa-localized-preview-20261024 CONTEXT=production node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
-          if SITE_ID=a5b1cda8-535a-4db2-b01f-07f41c30be76 BRANCH=main CONTEXT=production node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
-          if SITE_ID=a5b1cda8-535a-4db2-b01f-07f41c30be76 BRANCH=feature/usa-localized-preview-20261024 CONTEXT=production VITE_DOCWALLET_API_URL=https://example.invalid node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          export SITE_ID=a5b1cda8-535a-4db2-b01f-07f41c30be76
+          export SITE_NAME=av-usa-docwallet
+          export BRANCH=feature/usa-localized-preview-20261024
+          export CONTEXT=production
+          export NETLIFY=true
+          export COMMIT_REF="$(git rev-parse HEAD)"
+          node scripts/usa-netlify-site-guard.mjs
+          if SITE_ID=wrong node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if SITE_NAME=wrong node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if BRANCH=main node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if CONTEXT=deploy-preview node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if NETLIFY=false node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if COMMIT_REF=0000000000000000000000000000000000000000 node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if VITE_DOCWALLET_API_URL=https://example.invalid node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if SUPABASE_URL=https://example.invalid node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if PRIVY_APP_ID=synthetic node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
+          if BACKEND_URL=https://example.invalid node scripts/usa-netlify-site-guard.mjs; then exit 1; fi
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Build USA-only artifact
