@@ -1,33 +1,9 @@
+# Dedicated DocWallet USA preview only. Brazilian main stays untouched.
 [build]
-  command = "npm install && npm run build"
-  publish = "dist"
+  base = "."
+  command = "npm ci --legacy-peer-deps && npm exec -- vite build --config vite.usa.config.ts"
+  publish = "dist-usa-docwallet"
 
 [build.environment]
-  NODE_VERSION = "24"
+  NODE_VERSION = "22"
   NPM_CONFIG_LEGACY_PEER_DEPS = "true"
-  VITE_DOCWALLET_API_URL = "https://docwallet-backend.onrender.com"
-  VITE_DOCWALLET_PUBLIC_URL = "https://docwallet.netlify.app"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    Cache-Control = "no-cache, no-store, must-revalidate"
-
-[[headers]]
-  for = "/sw.js"
-  [headers.values]
-    Cache-Control = "no-cache, no-store, must-revalidate"
-
-[[headers]]
-  for = "/install-pwa.js"
-  [headers.values]
-    Cache-Control = "no-cache, no-store, must-revalidate"
