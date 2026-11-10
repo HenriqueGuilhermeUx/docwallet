@@ -1,0 +1,84 @@
+name: DocWallet Docs native iOS preflight (unsigned)
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'capacitor.config.ts'
+      - 'src/**'
+      - 'public/**'
+      - '.github/workflows/ios-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install project dependencies
+        run: npm install --no-package-lock --no-audit --no-fund
+      - name: Install matching Capacitor 6 iOS runtime (CI only)
+        run: npm install --no-save --no-package-lock --no-audit --no-fund @capacitor/ios@6.2.1
+      - name: Build web application
+        run: npm run build
+      - name: Generate iOS project
+        run: npx cap add ios
+      - name: Compile unsigned iOS simulator app
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKSPACE="$(find ios/App -maxdepth 1 -name '*.xcworkspace' -type d | head -1)"
+          if [[ -n "$WORKSPACE" ]]; then
+            xcodebuild -workspace "$WORKSPACE" -scheme App -sdk iphonesimulator -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO -derivedDataPath "$RUNNER_TEMP/docwallet-docs-ios" build 2>&1 | tee ios-build.log
+          else
+            xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO -derivedDataPath "$RUNNER_TEMP/docwallet-docs-ios" build 2>&1 | tee ios-build.log
+          fi
+      - name: Install and launch app in iPhone simulator
+        timeout-minutes: 12
+        shell: bash
+        run: |
+          set -euo pipefail
+          PRODUCT_DIR="$RUNNER_TEMP/docwallet-docs-ios/Build/Products/Debug-iphonesimulator"
+          APP_PATH="$(find "$PRODUCT_DIR" -maxdepth 1 -type d -name '*.app' | head -n 1)"
+          test -n "$APP_PATH"
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP_PATH/Info.plist")"
+          DEVICE_ID="$(xcrun simctl list devices available -j | node -e 'let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{let devices=Object.values(JSON.parse(x).devices).flat();let d=devices.find(v=>v.isAvailable&&v.name.startsWith("iPhone"));if(!d)process.exit(1);console.log(d.udid)})')"
+          xcrun simctl boot "$DEVICE_ID" || true
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl install "$DEVICE_ID" "$APP_PATH"
+          xcrun simctl launch "$DEVICE_ID" "$BUNDLE_ID"
+          sleep 5
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/docwallet-ios-launch.png"
+          xcrun simctl terminate "$DEVICE_ID" "$BUNDLE_ID"
+          xcrun simctl shutdown "$DEVICE_ID" || true
+      - name: Archive simulator screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-launch-screenshot
+          path: ${{ runner.temp }}/docwallet-ios-launch.png
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docwallet-docs-ios-log
+          path: ios-build.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload unsigned simulator .app
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docwallet-docs-ios-app
+          path: ${{ runner.temp }}/docwallet-docs-ios/Build/Products/Debug-iphonesimulator/*.app
+          if-no-files-found: error
+          retention-days: 7
