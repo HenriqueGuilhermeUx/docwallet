@@ -40,6 +40,32 @@ jobs:
           else
             xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO -derivedDataPath "$RUNNER_TEMP/docwallet-docs-ios" build 2>&1 | tee ios-build.log
           fi
+      - name: Install and launch app in iPhone simulator
+        timeout-minutes: 12
+        shell: bash
+        run: |
+          set -euo pipefail
+          PRODUCT_DIR="$RUNNER_TEMP/docwallet-docs-ios/Build/Products/Debug-iphonesimulator"
+          APP_PATH="$(find "$PRODUCT_DIR" -maxdepth 1 -type d -name '*.app' | head -n 1)"
+          test -n "$APP_PATH"
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP_PATH/Info.plist")"
+          DEVICE_ID="$(xcrun simctl list devices available -j | node -e 'let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{let devices=Object.values(JSON.parse(x).devices).flat();let d=devices.find(v=>v.isAvailable&&v.name.startsWith("iPhone"));if(!d)process.exit(1);console.log(d.udid)})')"
+          xcrun simctl boot "$DEVICE_ID" || true
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl install "$DEVICE_ID" "$APP_PATH"
+          xcrun simctl launch "$DEVICE_ID" "$BUNDLE_ID"
+          sleep 5
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/docwallet-ios-launch.png"
+          xcrun simctl terminate "$DEVICE_ID" "$BUNDLE_ID"
+          xcrun simctl shutdown "$DEVICE_ID" || true
+      - name: Archive simulator screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-launch-screenshot
+          path: ${{ runner.temp }}/docwallet-ios-launch.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -49,7 +75,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
       - name: Upload unsigned simulator .app
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: docwallet-docs-ios-app
