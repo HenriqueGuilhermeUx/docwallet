@@ -1,0 +1,58 @@
+name: DocWallet Docs native iOS preflight (unsigned)
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'capacitor.config.ts'
+      - 'src/**'
+      - 'public/**'
+      - '.github/workflows/ios-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install project dependencies
+        run: npm install --no-package-lock --no-audit --no-fund
+      - name: Install matching Capacitor 6 iOS runtime (CI only)
+        run: npm install --no-save --no-package-lock --no-audit --no-fund @capacitor/ios@6.2.1
+      - name: Build web application
+        run: npm run build
+      - name: Generate iOS project
+        run: npx cap add ios
+      - name: Compile unsigned iOS simulator app
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKSPACE="$(find ios/App -maxdepth 1 -name '*.xcworkspace' -type d | head -1)"
+          if [[ -n "$WORKSPACE" ]]; then
+            xcodebuild -workspace "$WORKSPACE" -scheme App -sdk iphonesimulator -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO -derivedDataPath "$RUNNER_TEMP/docwallet-docs-ios" build 2>&1 | tee ios-build.log
+          else
+            xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO -derivedDataPath "$RUNNER_TEMP/docwallet-docs-ios" build 2>&1 | tee ios-build.log
+          fi
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docwallet-docs-ios-log
+          path: ios-build.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload unsigned simulator .app
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docwallet-docs-ios-app
+          path: ${{ runner.temp }}/docwallet-docs-ios/Build/Products/Debug-iphonesimulator/*.app
+          if-no-files-found: error
+          retention-days: 7
