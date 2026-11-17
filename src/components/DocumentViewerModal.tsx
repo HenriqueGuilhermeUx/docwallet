@@ -4,6 +4,7 @@ import { Document, getDocumentTypeInfo } from '../types/document';
 import { formatDate } from '../utils/helpers';
 import { ShareModal } from './ShareModal';
 import { fetchPrivateDocumentBlob } from '../lib/secureDocumentDownloads';
+import { SESSION_CHANGE_EVENT } from '../lib/backendSession';
 import { DocumentIntelligencePanel } from './DocumentIntelligencePanel';
 
 interface DocumentViewerModalProps {
@@ -51,6 +52,15 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [document.id]);
+
+  useEffect(() => {
+    const onSessionChange = (event: Event) => {
+      // An expired/cleared session must immediately close private previews.
+      if (event instanceof CustomEvent && event.detail === null) onClose();
+    };
+    window.addEventListener(SESSION_CHANGE_EVENT, onSessionChange);
+    return () => window.removeEventListener(SESSION_CHANGE_EVENT, onSessionChange);
+  }, [onClose]);
 
   const typeInfo = getDocumentTypeInfo(document.type);
   const isPdf = document.fileType === 'application/pdf';
