@@ -45,4 +45,35 @@ describe('DocWallet Docs failed upload retry', () => {
     expect(onAdd).toHaveBeenNthCalledWith(1, 'Documento de teste fictício', 'rg', file);
     expect(onAdd).toHaveBeenNthCalledWith(2, 'Documento de teste fictício', 'rg', file);
   });
+
+  it('rejects an unsupported synthetic file before allowing upload', () => {
+    const onAdd = vi.fn();
+    const { container } = render(
+      <AddDocumentModal isOpen={true} onClose={vi.fn()} onAdd={onAdd} />
+    );
+    fireEvent.click(screen.getByText('RG'));
+    const picker = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(picker, {
+      target: { files: [new File(['fake'], 'nao-permitido.txt', { type: 'text/plain' })] },
+    });
+    expect(screen.getByText('Formato não suportado. Use JPG, PNG ou PDF.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Salvar' })).toBeNull();
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('blocks a synthetic PDF larger than 10 MB before upload', () => {
+    const onAdd = vi.fn();
+    const { container } = render(
+      <AddDocumentModal isOpen={true} onClose={vi.fn()} onAdd={onAdd} />
+    );
+    fireEvent.click(screen.getByText('RG'));
+    const picker = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const oversized = new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'muito-grande.pdf', {
+      type: 'application/pdf',
+    });
+    fireEvent.change(picker, { target: { files: [oversized] } });
+    expect(screen.getByText('Arquivo muito grande. Máximo 10MB.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Salvar' })).toBeNull();
+    expect(onAdd).not.toHaveBeenCalled();
+  });
 });
