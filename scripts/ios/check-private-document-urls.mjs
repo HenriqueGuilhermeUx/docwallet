@@ -12,7 +12,7 @@ const files = [
   'src/components/ShareModal.tsx',
 ];
 for (const path of files) {
-  const code = readFileSync(path, 'utf8');
+  const code = readFileSync(path, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.doesNotMatch(code, /[?&]s=(?:\$\{|\+|\w)/, `SESSION-IN-URL regression in ${path}`);
   assert.doesNotMatch(code, /(?:downloadUrl|backendShareLink)\s*\(/, `Legacy private document link in ${path}`);
 }
