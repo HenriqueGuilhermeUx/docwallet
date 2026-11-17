@@ -26,17 +26,14 @@ const readOrThrow = async <T>(response: Response, fallback: string, pick: (data:
   return pick(data);
 };
 
-const downloadUrl = (documentId: string) => {
-  const session = encodeURIComponent(readSession() || '');
-  return `${api()}/api/documents/${documentId}/download?s=${session}`;
-};
-
 const toDocument = (item: any): Document => ({
   id: item.id,
   name: item.name,
   type: item.type || 'other',
   category: item.category || 'other',
-  fileData: downloadUrl(item.id),
+  // Private bytes are fetched on demand with a Bearer header by DocumentViewerModal.
+  // Never place a reusable session token in an image URL or document model.
+  fileData: '',
   fileType: item.file_type || 'application/octet-stream',
   createdAt: item.created_at,
   filePath: item.download_url,
@@ -81,6 +78,3 @@ export const deleteBackendDocument = async (documentId: string): Promise<void> =
   return readOrThrow(response, 'Erro ao excluir documento', () => undefined);
 };
 
-export const backendShareLink = (documentId: string): string => {
-  return downloadUrl(documentId);
-};
