@@ -95,6 +95,31 @@ describe('real HTTP to isolated Flask API (127.0.0.1 only)', () => {
       .rejects.toThrow('Não foi possível baixar este documento.');
   });
 
+  it('round-trips synthetic PNG and JPG bytes with correct MIME and tenant isolation', async () => {
+    const fixtures = [
+      { name: 'synthetic-image.png', mime: 'image/png', bytes: new Uint8Array([137,80,78,71,13,10,26,10,0,0]) },
+      { name: 'synthetic-image.jpg', mime: 'image/jpeg', bytes: new Uint8Array([255,216,255,224,0,16,74,70,73,70,0,255,217]) },
+    ];
+    for (const item of fixtures) {
+      process.env.DOCWALLET_LOCAL_E2E_TOKEN = fixture.ownerToken;
+      const file = new NodeFile([item.bytes], item.name, { type: item.mime });
+      const doc = await uploadBackendDocument(file as unknown as File, 'Synthetic image', 'rg', 'ids');
+      expect(doc.fileData).toBe('');
+      expect(doc.fileType).toBe(item.mime);
+      try {
+        const data = await fetchPrivateDocumentBlob(doc.id);
+        expect(data.type).toBe(item.mime);
+        expect(Array.from(new Uint8Array(await data.arrayBuffer()))).toEqual(Array.from(item.bytes));
+        process.env.DOCWALLET_LOCAL_E2E_TOKEN = fixture.otherToken;
+        await expect(fetchPrivateDocumentBlob(doc.id)).rejects.toThrow('Não foi possível baixar este documento.');
+      } finally {
+        process.env.DOCWALLET_LOCAL_E2E_TOKEN = fixture.ownerToken;
+        await deleteBackendDocument(doc.id);
+      }
+      await expect(fetchPrivateDocumentBlob(doc.id)).rejects.toThrow('Não foi possível baixar este documento.');
+    }
+  });
+
   it('rejects unauthorized upload and an unsupported synthetic extension', async () => {
     process.env.DOCWALLET_LOCAL_E2E_TOKEN = fixture.ownerToken;
     const invalid = new NodeFile(['only fictional text'], 'synthetic.exe', {
