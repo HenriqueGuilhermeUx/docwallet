@@ -35,4 +35,4 @@ jobs:
       - name: Exercise upload retry UI and HTTP failure contracts (synthetic)
         env:
           VITE_DOCWALLET_API_URL: ''
-        run: ./node_modules/.bin/vitest run scripts/ios/upload-modal.test.tsx scripts/ios/upload-http.test.ts scripts/ios/private-download.test.ts --environment jsdom --pool forks --maxWorkers 1 --minWorkers 1
+        run: ./node_modules/.bin/vitest run scripts/ios/upload-modal.test.tsx scripts/ios/upload-http.test.ts scripts/ios/private-download.test.ts scripts/ios/private-preview.test.tsx --environment jsdom --pool forks --maxWorkers 1 --minWorkers 1
