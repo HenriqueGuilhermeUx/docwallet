@@ -32,7 +32,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Install ephemeral UI test dependencies (no lockfile changes)
         run: npm install --no-save --package-lock=false --no-audit --no-fund vitest@1.6.1 jsdom@24.1.3 @testing-library/react@16.3.0
-      - name: Exercise failed upload modal retry with synthetic file
+      - name: Exercise upload retry UI and HTTP failure contracts (synthetic)
         env:
           VITE_DOCWALLET_API_URL: ''
-        run: ./node_modules/.bin/vitest run scripts/ios/upload-modal.test.tsx --environment jsdom --pool forks --maxWorkers 1 --minWorkers 1
+        run: ./node_modules/.bin/vitest run scripts/ios/upload-modal.test.tsx scripts/ios/upload-http.test.ts --environment jsdom --pool forks --maxWorkers 1 --minWorkers 1
