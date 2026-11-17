@@ -84,8 +84,13 @@ export const AddDocumentModal: React.FC<AddDocumentModalProps> = ({ isOpen, onCl
 
     setIsUploading(true);
     try {
+      setError(null);
       await onAdd(documentName.trim(), selectedType, selectedFile);
       handleClose();
+    } catch (error) {
+      // Keep the selected document and its name so the user can retry safely.
+      // Do not expose backend error details (which may contain sensitive data).
+      setError('Não foi possível salvar o documento. Verifique sua conexão e tente novamente.');
     } finally {
       setIsUploading(false);
     }
