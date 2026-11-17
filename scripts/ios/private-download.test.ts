@@ -20,7 +20,7 @@ describe('Bearer-only private document download contract (not activated)', () =>
     ));
     vi.stubGlobal('fetch', mockFetch);
     const file = await fetchPrivateDocumentBlob('id with/slash');
-    expect(file).toBeInstanceOf(Blob);
+    // jsdom and Node's fetch implementation use distinct Blob constructors.\n    expect(file.size).toBeGreaterThan(0);\n    expect(file.type).toBe('application/pdf');
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
     expect(url).toBe('https://example.invalid/api/documents/id%20with%2Fslash/download');
