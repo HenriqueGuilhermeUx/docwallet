@@ -6,6 +6,7 @@ vi.mock('../../src/lib/backendSession', () => ({
   handleAuthFailure: (status: number) => 'Synthetic session expired: ' + status,
 }));
 import { fetchPrivateDocumentBlob } from '../../src/lib/secureDocumentDownloads';
+import { listBackendDocuments } from '../../src/lib/backendDocuments';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -52,5 +53,23 @@ describe('Bearer-only private document download contract (not activated)', () =>
       '{}', { status: 200, headers: { 'content-type': 'application/json' } },
     )));
     await expect(fetchPrivateDocumentBlob('doc')).rejects.toThrow('Resposta de arquivo inválida.');
+  });
+
+  it('returns document metadata without a session-bearing image URL', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ success: true, documents: [{
+        id: 'synthetic-id', name: 'Fictício', type: 'rg',
+        file_type: 'application/pdf', category: 'ids', created_at: '2026-01-01T00:00:00Z',
+      }] }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    ));
+    vi.stubGlobal('fetch', mockFetch);
+    const documents = await listBackendDocuments();
+    expect(documents).toHaveLength(1);
+    expect(documents[0].fileData).toBe('');
+    expect(JSON.stringify(documents)).not.toContain('synthetic-session-secret');
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe('https://example.invalid/api/documents');
+    expect(init.headers.Authorization).toBe('Bearer synthetic-session-secret');
   });
 });
