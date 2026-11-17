@@ -76,4 +76,32 @@ describe('DocWallet Docs failed upload retry', () => {
     expect(screen.queryByRole('button', { name: 'Salvar' })).toBeNull();
     expect(onAdd).not.toHaveBeenCalled();
   });
+
+  it('resets selected synthetic PDF and name when modal is closed and reopened', () => {
+    const onClose = vi.fn();
+    const onAdd = vi.fn();
+    const { container, rerender } = render(
+      <AddDocumentModal isOpen={true} onClose={onClose} onAdd={onAdd} />
+    );
+    fireEvent.click(screen.getByText('RG'));
+    const picker = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(picker, {
+      target: { files: [new File(['fake'], 'temporario-ficticio.pdf', { type: 'application/pdf' })] },
+    });
+    expect(screen.getByText('temporario-ficticio.pdf')).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText('Ex: RG - João Silva'), {
+      target: { value: 'Somente dados sintéticos' },
+    });
+    const closeButton = container.querySelector('.relative button');
+    expect(closeButton).not.toBeNull();
+    fireEvent.click(closeButton!);
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    rerender(<AddDocumentModal isOpen={false} onClose={onClose} onAdd={onAdd} />);
+    rerender(<AddDocumentModal isOpen={true} onClose={onClose} onAdd={onAdd} />);
+    expect(screen.getByText('Selecione o tipo')).toBeTruthy();
+    expect(screen.queryByText('temporario-ficticio.pdf')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Salvar' })).toBeNull();
+    expect(onAdd).not.toHaveBeenCalled();
+  });
 });
