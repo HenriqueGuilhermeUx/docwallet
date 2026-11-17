@@ -15,6 +15,7 @@ jobs:
           node-version: 20
       - run: npm install
       - run: node scripts/ios/check-upload-failure-contract.mjs
+      - run: node scripts/ios/check-private-document-urls.mjs
       - run: npm run build
 
   upload-ui-retry:
