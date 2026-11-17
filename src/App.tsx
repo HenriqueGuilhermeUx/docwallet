@@ -299,7 +299,12 @@ function App() {
     type: DocumentType,
     file: File
   ) => {
-    await addDocument(name, type, file);
+    const savedDocument = await addDocument(name, type, file);
+    if (!savedDocument) {
+      // The document hook reports failed uploads with null instead of rejecting.
+      // Keep the modal open so the user can retry with the same selected file.
+      throw new Error('Document upload was not completed');
+    }
   };
 
   const handleDocumentClick = (doc: Document) => {
