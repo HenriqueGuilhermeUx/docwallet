@@ -22,9 +22,9 @@ jobs:
       DOCWALLET_LOCAL_E2E_PORT: '8765'
       NEXA_SSO_ENABLED: 'false'
       NEXA_ECOSYSTEM_ATTENTION_ENABLED: 'false'
-      DATABASE_URL: sqlite:///${{ runner.temp }}/docwallet-local-test.sqlite3
-      UPLOAD_DIR: ${{ runner.temp }}/docwallet-local-documents
-      DOCWALLET_LOCAL_E2E_FIXTURES: ${{ runner.temp }}/docwallet-local-fixtures.json
+      DATABASE_URL: sqlite:////tmp/docwallet-local-test.sqlite3
+      UPLOAD_DIR: /tmp/docwallet-local-documents
+      DOCWALLET_LOCAL_E2E_FIXTURES: /tmp/docwallet-local-fixtures.json
       JWT_SECRET: local-ci-only-not-production
     steps:
       - name: Checkout frontend from PR
