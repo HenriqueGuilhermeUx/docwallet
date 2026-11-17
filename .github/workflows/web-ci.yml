@@ -16,3 +16,23 @@ jobs:
       - run: npm install
       - run: node scripts/ios/check-upload-failure-contract.mjs
       - run: npm run build
+
+  upload-ui-retry:
+    # UI-only test, isolated from backend and production credentials.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install application dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install ephemeral UI test dependencies (no lockfile changes)
+        run: npm install --no-save --package-lock=false --no-audit --no-fund vitest@1.6.1 jsdom@24.1.3 @testing-library/react@16.3.0
+      - name: Exercise failed upload modal retry with synthetic file
+        env:
+          VITE_DOCWALLET_API_URL: ''
+        run: ./node_modules/.bin/vitest run scripts/ios/upload-modal.test.tsx --environment jsdom --pool forks --maxWorkers 1 --minWorkers 1
