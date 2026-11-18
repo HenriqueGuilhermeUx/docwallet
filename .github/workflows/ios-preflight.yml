@@ -85,6 +85,13 @@ jobs:
           xcrun simctl terminate "$DEVICE_ID" "$BUNDLE_ID"
           xcrun simctl shutdown "$DEVICE_ID" || true
           echo "PASS: iPad install and launch smoke; not functional QA"
+      - name: Inspect iPhone and iPad simulator screenshots for uniform/blank output
+        if: always()
+        shell: bash
+        run: |
+          node scripts/ios/check-ios-smoke-screenshots.mjs \
+            "$RUNNER_TEMP/docwallet-ios-launch.png" \
+            "$RUNNER_TEMP/docwallet-ipad-launch.png"
       - name: Archive iPad simulator screenshot
         if: always()
         uses: actions/upload-artifact@v4
