@@ -1,7 +1,7 @@
 import { ShieldCheck, Trash2, Wallet } from 'lucide-react';
 
 const updatedAt = '25/09/2026';
-const supportEmail = 'suporte@docwallet.app';
+const supportEmail = 'corporate@alternativeventures.com.br';
 const publicBaseUrl = 'https://trydocwallet.com';
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
