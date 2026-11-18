@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Download, Share2, Trash2, ZoomIn, ZoomOut, ShieldCheck, Brain } from 'lucide-react';
 import { Document, getDocumentTypeInfo } from '../types/document';
 import { formatDate } from '../utils/helpers';
 import { ShareModal } from './ShareModal';
+import { fetchPrivateDocumentBlob } from '../lib/secureDocumentDownloads';
+import { SESSION_CHANGE_EVENT } from '../lib/backendSession';
 import { DocumentIntelligencePanel } from './DocumentIntelligencePanel';
 
 interface DocumentViewerModalProps {
@@ -16,15 +18,58 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showIntelligence, setShowIntelligence] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [privateFileUrl, setPrivateFileUrl] = useState<string | null>(null);
+  const [fileLoading, setFileLoading] = useState(true);
+  const [fileError, setFileError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl: string | null = null;
+    const controller = new AbortController();
+    setFileLoading(true);
+    setFileError(false);
+    setPrivateFileUrl(null);
+
+    fetchPrivateDocumentBlob(document.id, { signal: controller.signal })
+      .then((blob) => {
+        if (!active) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPrivateFileUrl(objectUrl);
+      })
+      .catch((error) => {
+        if (!active || controller.signal.aborted) return;
+        // Download failures may include private backend information: show only generic UX.
+        console.warn('Private document preview unavailable:', error instanceof Error ? error.name : 'error');
+        setFileError(true);
+      })
+      .finally(() => {
+        if (active) setFileLoading(false);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [document.id]);
+
+  useEffect(() => {
+    const onSessionChange = (event: Event) => {
+      // An expired/cleared session must immediately close private previews.
+      if (event instanceof CustomEvent && event.detail === null) onClose();
+    };
+    window.addEventListener(SESSION_CHANGE_EVENT, onSessionChange);
+    return () => window.removeEventListener(SESSION_CHANGE_EVENT, onSessionChange);
+  }, [onClose]);
 
   const typeInfo = getDocumentTypeInfo(document.type);
   const isPdf = document.fileType === 'application/pdf';
 
   const handleDownload = () => {
-    if (!document.fileData) return;
+    if (!privateFileUrl) return;
 
     const link = window.document.createElement('a');
-    link.href = document.fileData;
+    link.href = privateFileUrl;
     link.download = `${document.name}.${document.fileType.split('/')[1] || 'arquivo'}`;
     link.rel = 'noopener noreferrer';
     link.click();
@@ -81,23 +126,25 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
             style={{ transform: isPdf ? 'none' : `scale(${zoom})`, transition: 'transform 0.2s ease' }}
             className="max-w-full max-h-full"
           >
-            {document.fileData ? (
+            {privateFileUrl ? (
               isPdf ? (
                 <iframe
-                  src={document.fileData}
+                  src={privateFileUrl}
                   title={document.name}
                   className="w-[92vw] h-[78vh] max-w-5xl rounded-lg shadow-2xl bg-white"
                 />
               ) : (
                 <img
-                  src={document.fileData}
+                  src={privateFileUrl}
                   alt={document.name}
                   className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
                 />
               )
             ) : (
               <div className="w-64 h-80 bg-slate-800 rounded-xl flex items-center justify-center">
-                <p className="text-slate-500">Arquivo indisponível</p>
+                <p className="text-slate-300 text-center px-4">
+                  {fileLoading ? 'Carregando documento...' : fileError ? 'Não foi possível abrir este documento.' : 'Arquivo indisponível'}
+                </p>
               </div>
             )}
           </div>
@@ -138,7 +185,8 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ docume
             </button>
             <button
               onClick={handleDownload}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full font-medium transition-colors"
+              disabled={!privateFileUrl}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download size={18} />
               <span>Baixar</span>

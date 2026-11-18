@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { X, Upload, Camera, CreditCard, Car, Fingerprint, Plane, CheckSquare, Briefcase, Heart, Syringe, FileText, File, Loader2 } from 'lucide-react';
 import { DocumentType, DOCUMENT_TYPES } from '../types/document';
 import { isValidFileType, isValidFileSize } from '../utils/helpers';
@@ -33,6 +33,12 @@ export const AddDocumentModal: React.FC<AddDocumentModalProps> = ({ isOpen, onCl
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Release browser object URLs whenever the selected document changes or the modal unmounts.
+  useEffect(() => {
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
   const resetForm = () => {
     setStep(1);
     setSelectedType(null);
@@ -62,9 +68,7 @@ export const AddDocumentModal: React.FC<AddDocumentModalProps> = ({ isOpen, onCl
     }
 
     setSelectedFile(file);
-    if (file.type.startsWith('image/')) {
-      setPreviewUrl(URL.createObjectURL(file));
-    }
+    setPreviewUrl(file.type.startsWith('image/') ? URL.createObjectURL(file) : null);
     setStep(3);
   };
 
@@ -80,8 +84,13 @@ export const AddDocumentModal: React.FC<AddDocumentModalProps> = ({ isOpen, onCl
 
     setIsUploading(true);
     try {
+      setError(null);
       await onAdd(documentName.trim(), selectedType, selectedFile);
       handleClose();
+    } catch (error) {
+      // Keep the selected document and its name so the user can retry safely.
+      // Do not expose backend error details (which may contain sensitive data).
+      setError('Não foi possível salvar o documento. Verifique sua conexão e tente novamente.');
     } finally {
       setIsUploading(false);
     }

@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Document } from '../types/document';
 import { formatDate, truncateText } from '../utils/helpers';
 import { DocumentTypeIcon } from './Header';
 import { getDocumentTypeInfo } from '../types/document';
 import { Calendar, Eye, Share2, Shield } from 'lucide-react';
+import { fetchPrivateDocumentBlob } from '../lib/secureDocumentDownloads';
 
 interface DocumentCardProps {
   document: Document;
@@ -13,13 +15,41 @@ interface DocumentCardProps {
 
 export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onClick, onShare, onAuthenticate }) => {
   const typeInfo = getDocumentTypeInfo(document.type);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // PDFs keep their generic icon; image thumbnails are downloaded privately.
+    if (!document.fileType.startsWith('image/')) {
+      setThumbnailUrl(null);
+      return;
+    }
+    let active = true;
+    let objectUrl: string | null = null;
+    const controller = new AbortController();
+    setThumbnailUrl(null);
+    fetchPrivateDocumentBlob(document.id, { signal: controller.signal })
+      .then((blob) => {
+        if (!active) return;
+        if (!blob.type.startsWith('image/')) return;
+        objectUrl = URL.createObjectURL(blob);
+        setThumbnailUrl(objectUrl);
+      })
+      .catch(() => {
+        // A failed thumbnail must not obstruct navigation to the document.
+      });
+    return () => {
+      active = false;
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [document.id, document.fileType]);
 
   return (
     <div className="group bg-white rounded-xl shadow-card border border-slate-100 overflow-hidden transition-all duration-200 hover:shadow-card-hover hover:scale-[1.02] hover:border-primary/30">
       <button onClick={onClick} className="text-left w-full">
         <div className="aspect-[3/4] bg-gradient-to-br from-slate-50 to-slate-100 relative overflow-hidden">
-          {document.fileData ? (
-            <img src={document.fileData} alt={document.name} className="w-full h-full object-cover" />
+          {thumbnailUrl ? (
+            <img src={thumbnailUrl} alt={document.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <DocumentTypeIcon iconName={typeInfo.icon} className="text-slate-300" size={48} />

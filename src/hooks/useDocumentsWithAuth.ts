@@ -6,8 +6,8 @@ import {
   listBackendDocuments,
   uploadBackendDocument,
   deleteBackendDocument,
-  backendShareLink,
 } from '../lib/backendDocuments';
+import { createAccessLink, accessLinkUrl } from '../lib/accessLinks';
 import { analyzeDocument } from '../lib/intelligence';
 
 interface Toast {
@@ -292,10 +292,11 @@ export const useDocumentsWithAuth = () => {
 
   const createShareLink = async (docId: string): Promise<string> => {
     try {
-      const link = backendShareLink(docId);
+      // Use a restricted/expiring share link rather than the account session token.
+      const link = await createAccessLink(docId);
       showToast('Link de compartilhamento criado!', 'success');
 
-      return link;
+      return accessLinkUrl(link);
     } catch (error) {
       console.error('Error creating share link:', error);
       showToast('Erro ao criar link', 'error');
